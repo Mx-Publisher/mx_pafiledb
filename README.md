@@ -2,7 +2,7 @@
 MXP Module - File Manager (pafileDB)
 v. 2.2.6
 http://mxpcms.sourceforge.net/forum/viewtopic.php?f=99&t=10816
-Module
+
 - for MXP Core 2.8.x and 3.0.x (with some notes, see below)
 
 Note: This module currently supports standalone/internal and phpBB2 mode only (with MXP 3.0.x)
