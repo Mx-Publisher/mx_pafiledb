@@ -1,0 +1,23 @@
+module=+:46=+:PafileDB download=+:modules/mx_pafiledb/=+:PafileDB download module=+:1
+New_function=+:---------------------------=+:0=+:0=+:0=+:0=+:0
+function=+:46=+:56=+:PafileDB=+:PafileDB download=+:dload.php=+:
+parameter=+:0=+:0=+:0=+:endoflist=+:0=+:0
+block=+:=+:Demo - PafileDB=+:Demo block=+:56=+:0=+:5=+:0=+:0=+:0=+:0=+:1=+:1
+New_function=+:---------------------------=+:0=+:0=+:0=+:0=+:0
+function=+:46=+:57=+:PafileDB_list=+:PafileDB download toplists=+:dload_lists.php=+:
+parameter=+:57=+:154=+:display_latest_posts=+:Boolean=+:TRUE=+:=+:0
+parameter=+:57=+:151=+:display_most_posts=+:Boolean=+:TRUE=+:=+:0
+parameter=+:57=+:152=+:display_random_posts=+:Boolean=+:TRUE=+:=+:0
+parameter=+:57=+:153=+:display_top_ranked=+:Boolean=+:TRUE=+:=+:0
+parameter=+:57=+:155=+:num_of_cols=+:Number=+:1=+:=+:0
+parameter=+:57=+:156=+:num_of_rows=+:Number=+:3=+:=+:0
+parameter=+:57=+:157=+:target_block=+:Function=+:0=+:get_list_formatted("block_list","{parameter_value}","{parameter_id}[]", "dload.php")=+:0
+parameter=+:0=+:0=+:0=+:endoflist=+:0=+:0
+block=+:=+:Demo - PafileDB_list=+:Demo block=+:57=+:0=+:5=+:0=+:0=+:0=+:0=+:1=+:1
+New_function=+:---------------------------=+:0=+:0=+:0=+:0=+:0
+function=+:46=+:99=+:Quick dl=+:Quick download block - blog=+:dload_quickdl.php=+:
+parameter=+:99=+:323=+:pa_mapping=+:pa_mapping=+:=+:=+:0
+parameter=+:99=+:324=+:pa_quick_cat=+:pa_quick_cat=+:1=+:=+:0
+parameter=+:0=+:0=+:0=+:endoflist=+:0=+:0
+block=+:=+:Demo - Quick dl=+:Demo block=+:99=+:0=+:5=+:0=+:0=+:0=+:0=+:1=+:1
+function=+:0=+:0=+:0=+:endoflist=+:0=+:0
