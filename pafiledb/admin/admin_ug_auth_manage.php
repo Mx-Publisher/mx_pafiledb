@@ -15,8 +15,9 @@ if ( !defined( 'IN_PORTAL' ) || !defined( 'IN_ADMIN' ) )
 
 class pafiledb_ug_auth_manage extends pafiledb_admin
 {
-	function main( $action )
+	function main( $module_id = false )
 	{
+		$action = $module_id;
 		global $db, $images, $template, $template, $lang, $phpEx, $pafiledb_functions, $pafiledb_cache, $pafiledb_config, $phpbb_root_path, $module_root_path, $mx_root_path, $mx_request_vars;
 		global $cat_auth_fields, $cat_auth_const, $cat_auth_levels, $global_auth_fields;
 		global $optionlist_mod, $optionlist_acl_adv;
@@ -741,7 +742,8 @@ class pafiledb_ug_auth_manage extends pafiledb_admin
 						FROM " . USERS_TABLE . " u, " . GROUPS_TABLE . " g, " . USER_GROUP_TABLE . " ug 
 						WHERE u.user_id = $user_id 
 							AND ug.user_id = u.user_id 
-							AND g.group_id = ug.group_id"
+							AND g.group_id = ug.group_id";
+					
 					$sql_group = "SELECT u.user_id, u.username, u.user_level, g.group_id, g.group_name, g.group_single_user 
 						FROM " . USERS_TABLE . " u, " . GROUPS_TABLE . " g, " . USER_GROUP_TABLE . " ug 
 						WHERE g.group_id = $group_id 
@@ -791,7 +793,7 @@ class pafiledb_ug_auth_manage extends pafiledb_admin
 							AND g.group_id = ug.group_id 
 							AND aa.group_id = ug.group_id 
 							AND g.group_single_user = 1 
-							AND aa.cat_id = '0'" 		
+							AND aa.cat_id = '0'" ;		
 
 				break;
 

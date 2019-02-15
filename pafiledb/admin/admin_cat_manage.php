@@ -15,10 +15,12 @@ if ( !defined( 'IN_PORTAL' ) || !defined( 'IN_ADMIN' ) )
 
 class pafiledb_cat_manage extends pafiledb_admin
 {
-	function main( $action )
+	function main( $module_id = false )
 	{
 		global $db, $images, $template, $template, $lang, $phpEx, $pafiledb_functions, $pafiledb_cache, $pafiledb_config, $phpbb_root_path, $module_root_path, $mx_root_path, $mx_request_vars, $portal_config;
-
+		
+		$action = $module_id;
+		
 		$mode = ( isset( $_REQUEST['mode'] ) ) ? htmlspecialchars( $_REQUEST['mode'] ) : '';
 		$cat_id = ( isset( $_REQUEST['cat_id'] ) ) ? intval( $_REQUEST['cat_id'] ) : 0;
 		$cat_id_other = ( isset( $_REQUEST['cat_id_other'] ) ) ? intval( $_REQUEST['cat_id_other'] ) : 0;
@@ -79,26 +81,26 @@ class pafiledb_cat_manage extends pafiledb_admin
 				$l_title = $lang['Panel_cat_title'];
 				$l_explain = $lang['Panel_cat_explain'];
 				$s_hidden_fields = '<input type="hidden" name="mode" value="add">';
-				break;
+			break;
 			case 'add':
 				$template_file = 'admin/pa_admin_cat_edit.tpl';
 				$l_title = $lang['Acattitle'];
 				$l_explain = $lang['Catexplain'];
 				$s_hidden_fields = '<input type="hidden" name="mode" value="do_add">';
-				break;
+			break;
 			case 'edit':
 				$template_file = 'admin/pa_admin_cat_edit.tpl';
 				$l_title = $lang['Ecattitle'];
 				$l_explain = $lang['Catexplain'];
 				$s_hidden_fields = '<input type="hidden" name="mode" value="do_add">';
 				$s_hidden_fields .= '<input type="hidden" name="cat_id" value="' . $cat_id . '">';
-				break;
+			break;
 			case 'delete':
 				$template_file = 'admin/pa_admin_cat_delete.tpl';
 				$l_title = $lang['Dcattitle'];
 				$l_explain = $lang['Catexplain'];
 				$s_hidden_fields = '<input type="hidden" name="mode" value="do_delete">';
-				break;
+			break;
 		}
 
 		$template->set_filenames( array( 'admin' => $template_file ) );

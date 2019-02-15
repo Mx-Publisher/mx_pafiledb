@@ -15,8 +15,9 @@ if ( !defined( 'IN_PORTAL' ) || !defined( 'IN_ADMIN' ) )
 
 class pafiledb_settings extends pafiledb_admin
 {
-	function main( $action )
+	function main( $module_id = false )
 	{
+		$action = $module_id;
 		global $db, $images, $template, $lang, $phpEx, $pafiledb_functions, $pafiledb_cache, $pafiledb_config, $phpbb_root_path, $module_root_path, $mx_root_path, $mx_request_vars, $portal_config;
 
 		$submit = ( isset( $_POST['submit'] ) ) ? true : false;
@@ -80,7 +81,7 @@ class pafiledb_settings extends pafiledb_admin
 			}
 		}
 
-		$template->set_filenames( array( 'admin' => 'admin/pa_admin_settings.tpl' ) );
+		$template->set_filenames( array( 'admin' => 'admin/pa_acp_settings.html' ) );
 
 		$cat_auth_levels = array( 'ALL', 'REG', 'PRIVATE', 'MOD', 'ADMIN' );
 		$cat_auth_const = array( AUTH_ALL, AUTH_REG, AUTH_ACL, AUTH_MOD, AUTH_ADMIN );
@@ -118,8 +119,8 @@ class pafiledb_settings extends pafiledb_admin
 
 		$hotlink_allowed = $new['hotlink_allowed'];
 
-		$php_template_yes = ( $new['settings_tpl_php'] ) ? "checked=\"checked\"" : "";
-		$php_template_no = ( !$new['settings_tpl_php'] ) ? "checked=\"checked\"" : "";
+		$php_template_yes = isset( $new['settings_tpl_php'] ) ? "checked=\"checked\"" : "";
+		$php_template_no = !isset( $new['settings_tpl_php'] ) ? "checked=\"checked\"" : "";
 
 		$max_file_size = $new['max_file_size'];
 
@@ -322,7 +323,15 @@ class pafiledb_settings extends pafiledb_admin
 			'L_SCREENSHOT_DIR' => $lang['Screenshots_directory'],
 			'L_SCREENSHOT_DIR_EXPLAIN' => $lang['Screenshots_directory_explain'],
 			'SCREENSHOT_DIR' => $screenshots_dir,
-
+			
+			//
+			// ACP BASIC
+			//
+			'L_ACP_BASIC' => $lang['ACP_BASIC'],
+			'L_ACP_MANAGE_CONFIG' => $lang['ACP_MANAGE_CONFIG_EXPLAIN'],
+			'L_ACP_PAGINATION_DOWNLOADS' => $lang['ACP_PAGINATION_DOWNLOADS'],
+			'L_ACP_PAGINATION_DOWNLOADS_EXPLAIN' => $lang['ACP_PAGINATION_DOWNLOADS_EXPLAIN'],
+			
 			//
 			// FILE
 			//

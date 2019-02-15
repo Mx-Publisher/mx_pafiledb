@@ -66,8 +66,8 @@ class mx_pafiledb extends mx_pafiledb_auth
 
 		$db->sql_freeresult( $result );
 
-		$this->auth( $cat_rowset );
-
+		$this->auth($cat_rowset);
+		
 		for( $i = 0; $i < count( $cat_rowset ); $i++ )
 		{
 			if ( $this->auth_user[$cat_rowset[$i]['cat_id']]['auth_view'] )
@@ -82,21 +82,26 @@ class mx_pafiledb extends mx_pafiledb_auth
 				//
 				$this->comments[$cat_rowset[$i]['cat_id']]['activated'] = $cat_rowset[$i]['cat_allow_comments'] == -1 ? ($pafiledb_config['use_comments'] == 1 ? true : false ) : ( $cat_rowset[$i]['cat_allow_comments'] == 1 ? true : false );
 
-				switch($portal_config['portal_backend'])
+				switch(PORTAL_BACKEND)
 				{
 					case 'internal':
 						$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] = true; // phpBB or internal comments
 						$this->comments[$cat_rowset[$i]['cat_id']]['autogenerate_comments'] = false; // autocreate comments when updated
 						$this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id'] = 0; // phpBB target forum (only used for phpBB comments)
-						break;
+					break;
 
 					default:
 						$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] = $cat_rowset[$i]['internal_comments'] == -1 ? ($pafiledb_config['internal_comments'] == 1 ? true : false ) : ( $cat_rowset[$i]['internal_comments'] == 1 ? true : false ); // phpBB or internal comments
 						$this->comments[$cat_rowset[$i]['cat_id']]['autogenerate_comments'] = $cat_rowset[$i]['autogenerate_comments'] == -1 ? ($pafiledb_config['autogenerate_comments'] == 1 ? true : false ) : ( $cat_rowset[$i]['autogenerate_comments'] == 1 ? true : false ); // autocreate comments when updated
 						$this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id'] = $cat_rowset[$i]['comments_forum_id'] < 1 ? ( intval($pafiledb_config['comments_forum_id']) ) : ( intval($cat_rowset[$i]['comments_forum_id']) ); // phpBB target forum (only used for phpBB comments)
-						break;
+					break;
 				}
 
+				if ($this->comments[$cat_rowset[$i]['cat_id']]['activated'] && !$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] && intval($this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id']) < 1)
+				{
+					$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] = true; // autocreate comments when updated
+				}
+				
 				if ($this->comments[$cat_rowset[$i]['cat_id']]['activated'] && !$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] && intval($this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id']) < 1)
 				{
 					mx_message_die(GENERAL_ERROR, 'Init Failure, phpBB comments with no target forum_id :( <br> Category: ' . $cat_rowset[$i]['cat_name'] . ' Forum_id: ' . $this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id']);
@@ -192,9 +197,10 @@ class mx_pafiledb extends mx_pafiledb_auth
 	function sync($cat_id, $init = true)
 	{
 		global $db;
-
+		
+		// Can not be passed by refrence: &$cat_nav
 		$cat_nav = array();
-		$this->category_nav( $this->cat_rowset[$cat_id]['cat_parent'], $cat_nav );
+		$this->category_nav($this->cat_rowset[$cat_id]['cat_parent'], $cat_nav );
 
 		$sql = 'UPDATE ' . PA_CATEGORY_TABLE . "
 			SET parents_data = ''
@@ -236,7 +242,109 @@ class mx_pafiledb extends mx_pafiledb_auth
 		}
 		return;
 	}
+	
+	/**
+	 * Dummy function
+	 */
+	function message_die($msg_code, $msg_text = '', $msg_title = '', $err_line = '', $err_file = '', $sql = '')
+	{		
+		//
+		// Get SQL error if we are debugging. Do this as soon as possible to prevent
+		// subsequent queries from overwriting the status of sql_error()
+		//
+		if (DEBUG && ($msg_code == GENERAL_ERROR || $msg_code == CRITICAL_ERROR))
+		{
+				
+			if ( isset($sql) )
+			{
+				//$sql_error = array(@print_r(@$this->db->sql_error($sql)));				
+				$sql_error['message'] = $sql_error['message'] ? $sql_error['message'] : '<br /><br />SQL : ' . $sql; 
+				$sql_error['code'] = $sql_error['code'] ? $sql_error['code'] : 0;			
+			}
+			else
+			{
+				$sql_error = array(@print_r(@$this->db->sql_error_returned));				
+				$sql_error['message'] = $sql_error['message'] ? $sql_error['message'] : '<br /><br />SQL : ' . $sql; 
+				$sql_error['code'] = $sql_error['code'] ? $sql_error['code'] : 0;					
+			}			
+			
+			$debug_text = '';
 
+			if ( isset($sql_error['message']) )
+			{
+				$debug_text .= '<br /><br />SQL Error : ' . $sql_error['code'] . ' ' . $sql_error['message'];
+			}
+
+			if ( isset($sql_store) )
+			{
+				$debug_text .= "<br /><br />$sql_store";
+			}
+
+			if ( isset($err_line) && isset($err_file) )
+			{
+				$debug_text .= '</br /><br />Line : ' . $err_line . '<br />File : ' . $err_file;
+			}
+		}		
+		
+		switch($msg_code)
+		{
+			case GENERAL_MESSAGE:
+				if ( $msg_title == '' )
+				{
+					$msg_title = $this->user->lang('Information');
+				}
+			break;
+
+			case CRITICAL_MESSAGE:
+				if ( $msg_title == '' )
+				{
+					$msg_title = $this->user->lang('Critical_Information');
+				}
+			break;
+
+			case GENERAL_ERROR:
+				if ( $msg_text == '' )
+				{
+					$msg_text = $this->user->lang('An_error_occured');
+				}
+
+				if ( $msg_title == '' )
+				{
+					$msg_title = $this->user->lang('General_Error');
+				}
+			break;
+
+			case CRITICAL_ERROR:
+
+				if ($msg_text == '')
+				{
+					$msg_text = $this->user->lang('A_critical_error');
+				}
+
+				if ($msg_title == '')
+				{
+					$msg_title = 'phpBB : <b>' . $this->user->lang('Critical_Error') . '</b>';
+				}
+			break;
+		}
+		
+		//
+		// Add on DEBUG info if we've enabled debug mode and this is an error. This
+		// prevents debug info being output for general messages should DEBUG be
+		// set TRUE by accident (preventing confusion for the end user!)
+		//
+		if ( DEBUG && ( $msg_code == GENERAL_ERROR || $msg_code == CRITICAL_ERROR ) )
+		{
+			if ( $debug_text != '' )
+			{
+				$msg_text = $msg_text . '<br /><br /><b><u>DEBUG MODE</u></b> ' . $debug_text;
+			}
+		}		
+		
+		trigger_error($msg_title . ': ' . $msg_text);
+	}  
+	
+	
 	/**
 	 * Enter description here...
 	 *
@@ -281,6 +389,8 @@ class mx_pafiledb extends mx_pafiledb_auth
 	 */
 	function items_in_cat( $cat_id )
 	{
+		//
+		
 		if ( $this->cat_rowset[$cat_id]['cat_files'] == -1 || $this->modified )
 		{
 			global $db;
@@ -393,6 +503,26 @@ class mx_pafiledb extends mx_pafiledb_auth
 		}
 	}
 
+	/**
+	 * Jump menu function.
+	 *
+	 * @param unknown_type $cat_id to handle parent cat_id
+	 * @param unknown_type $depth related to function to generate tree
+	 * @param unknown_type $default the cat you wanted to be selected
+	 * @param unknown_type $for_file TRUE high category ids will be -1
+	 * @param unknown_type $check_upload if true permission for upload will be checked
+	 * @return unknown
+	 */
+	 
+	/**
+	 * display items.
+	 *
+	 * @param unknown_type $start
+	 * @param unknown_type $cat_id
+	 * @param unknown_type $block_name
+	 * @param unknown_type $approve
+	 */
+	 
 	/**
 	 * get_sub_cat.
 	 *
@@ -633,8 +763,12 @@ class mx_pafiledb extends mx_pafiledb_auth
 		//
 		// Output the categories
 		//
+		$num_of_cats = 0;		
 		if ( isset( $this->subcat_rowset[$cat_id] ) )
 		{
+			//
+			// Variables needed for the simple nav
+			//			
 			$catnum = count($this->subcat_rowset[$cat_id]);
 			$catcol = $pafiledb_config['cat_col'] > 0 ? $pafiledb_config['cat_col'] : 1;
 			$num_of_rows = intval( $catnum / $catcol );
@@ -649,6 +783,9 @@ class mx_pafiledb extends mx_pafiledb_auth
 
 			foreach( $this->subcat_rowset[$cat_id] as $subcat_id => $subcat_row )
 			{
+				//
+				// Auth
+				//				
 				if ( $i == 0 || $i ==  $catcol)
 				{
 					$template->assign_block_vars( 'catcol', array() );
@@ -1133,16 +1270,16 @@ class mx_pafiledb extends mx_pafiledb_auth
 					{
 						case 'date':
 							$template->assign_block_vars( "file_rows.display_date", array());
-							break;
+						break;
 						case 'username':
 							$template->assign_block_vars( "file_rows.display_username", array());
-							break;
+						break;
 						case 'counter':
 							$template->assign_block_vars( "file_rows.display_counter", array());
-							break;
+						break;
 						case 'rate':
 							$template->assign_block_vars( "file_rows.display_rate", array());
-							break;
+						break;
 					}
 				}
 			}
@@ -1740,7 +1877,9 @@ class mx_pafiledb extends mx_pafiledb_auth
 	}
 
 	/**
-	 * Enter description here...
+	 * update_add_item.
+	 *
+	 * Implemented for mx_pafiledb
 	 *
 	 * @param unknown_type $file_id
 	 * @return unknown
@@ -2377,18 +2516,18 @@ class pafiledb_public extends mx_pafiledb
 	 *
 	 * @param unknown_type $module_name send module name to load it
 	 */
-	function module( $module_name )
+	function module($module_name)
 	{
-		if ( !class_exists( 'pafiledb_' . $module_name ) )
+		if (!class_exists('pafiledb_' . $module_name))
 		{
 			global $module_root_path, $phpEx;
 
 			$this->module_name = $module_name;
 
-			require_once( $module_root_path . 'pafiledb/modules/pa_' . $module_name . '.' . $phpEx );
-			eval( '$this->modules[' . $module_name . '] = new pafiledb_' . $module_name . '();' );
+			require_once( $module_root_path . 'pafiledb/modules/pa_' . $module_name . '.' . $phpEx);
+			@eval('$this->modules[' . $module_name . '] = new pafiledb_' . $module_name . '();' );
 
-			if ( method_exists( $this->modules[$module_name], 'init' ) )
+			if (method_exists($this->modules[$module_name], 'init'))
 			{
 				$this->modules[$module_name]->init();
 			}
@@ -2396,7 +2535,7 @@ class pafiledb_public extends mx_pafiledb
 	}
 
 	/**
-	 * this will be replaced by the loaded module
+	 * this will be replaced by the loaded module.
 	 *
 	 * @param unknown_type $module_id
 	 * @return unknown
@@ -2408,6 +2547,7 @@ class pafiledb_public extends mx_pafiledb
 
 	/**
 	 * go ahead and output the page
+	 * - not used in mx_pafiledb
 	 *
 	 * @param unknown_type $page_title send page title
 	 * @param unknown_type $tpl_name template file name
@@ -2421,4 +2561,48 @@ class pafiledb_public extends mx_pafiledb
 		$pafiledb_functions->page_footer();
 	}
 }
+
+if ( !function_exists( 'html_entity_decode' ) )
+{
+	/**
+	 * For old php versions.
+	 *
+	 * @param unknown_type $string
+	 * @param unknown_type $opt
+	 * @return unknown
+	 */
+	/*
+	function html_entity_decode ( $string, $opt = ENT_COMPAT )
+	{
+		$trans_tbl = get_html_translation_table ( HTML_ENTITIES );
+		$trans_tbl = array_flip ( $trans_tbl );
+
+		if ( $opt &1 )
+		{
+			// Translating single quotes
+			// Add single quote to translation table;
+			// doesn't appear to be there by default
+			$trans_tbl["&apos;"] = "'";
+		}
+
+		if ( !( $opt &2 ) )
+		{
+			// Not translating double quotes
+			// Remove double quote from translation table
+			unset( $trans_tbl["&quot;"] );
+		}
+
+		return strtr ( $string, $trans_tbl );
+	}
+	*/
+}
+
+//
+// Just to be safe ;o)
+//
+/*
+if ( !defined( "ENT_COMPAT" ) ) define( "ENT_COMPAT", 2 );
+if ( !defined( "ENT_NOQUOTES" ) ) define( "ENT_NOQUOTES", 0 );
+if ( !defined( "ENT_QUOTES" ) ) define( "ENT_QUOTES", 3 );
+*/
 ?>

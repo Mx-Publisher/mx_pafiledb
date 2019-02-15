@@ -1,9 +1,9 @@
 <?php
 /**
 *
-* @package MX-Publisher Module - mx_pafiledb
+* @package MX-pafiledb Module - mx_pafiledb
 * @version $Id: functions.php,v 1.62 2012/01/09 06:58:15 orynider Exp $
-* @copyright (c) 2002-2006 [Mohd Basri, PHP Arena, pafileDB, Jon Ohlsson] MX-Publisher Project Team
+* @copyright (c) 2002-2006 [Mohd Basri, PHP Arena, pafileDB, Jon Ohlsson] MX-pafiledb Project Team
 * @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
 *
 */
@@ -24,6 +24,250 @@ if ( !defined( 'IN_PORTAL' ) )
  */
 class pafiledb_functions
 {
+	/** @var \phpbb\template\template */
+	protected $template;
+
+	/** @var \phpbb\user */
+	protected $user;
+
+	/** @var \phpbb\db\driver\driver_interface */
+	protected $db;
+
+	/** @var \phpbb\controller\helper */
+	protected $helper;
+
+	/** @var \phpbb\request\request */
+	protected $request;
+	
+	/** @var \phpbb\auth\auth */
+	protected $auth;	
+	
+	/** @var ContainerInterface */
+	protected $container;	
+	
+	/** @var \phpbb\cache\cache */
+	protected $cache;
+
+	/** @var \orynider\pafiledb\core\ pafiledb */
+	protected $pafiledb;	
+
+	/** @var \orynider\pafiledb\core\pafiledb_cache */
+	protected $pafiledb_cache;
+	
+	/** @var \orynider\pafiledb\core\templates */
+	protected $templates;	
+	
+	/** @var \phpbb\config\config */
+	protected $config;
+
+	/** @var \phpbb\pagination */
+	protected $pagination;
+
+	/** @var \phpbb\extension\manager */
+	protected $extension_manager;
+
+	/** @var string */
+	protected $php_ext;
+
+	/** @var string phpBB root path */
+	protected $root_path;
+	protected $mx_root_path;
+	protected $module_root_path;
+	protected $phpbb_root_path;
+	
+	var $total_cat = 0;	
+	
+	/** @var string */	
+	var $cat_rowset = array();
+	
+	/** @var string */	
+	var $subcat_rowset = array();
+	
+	/** @var string */	
+	var $comments = array();
+	
+	/** @var string */	
+	var $ratings = array();
+	
+	/** @var string */	
+	var $information = array();
+	
+	/** @var string */	
+	var $notification = array();
+
+	var $modified = false;
+	var $error = array();
+	var $auth_user = array();
+	var $page_title = '';
+	var $jumpbox = '';
+	var $auth_can_list = '';
+	var $navigation = '';
+
+	var $debug = false; // Toggle debug output on/off
+	var $debug_msg = array();	
+
+	/**
+	* The database tables
+	*
+	* @var string
+	*/
+	protected $pa_files_table;
+
+	protected $pa_cat_table;
+
+	protected $pa_config_table;
+	
+	protected $pa_votes_table;
+	
+	protected $pa_comments_table;
+	
+	protected $pa_license_table;	
+	
+	public function pafiledb_functions()
+	{
+		global $mx_cache, $pafiledb_cache, $mx_request_vars, $template, $mx_user, $db, $phpbb_auth;  
+		global $board_config, $phpEx, $phpbb_root_path, $mx_root_path, $module_root_path;
+		
+		$this->template 			= $template;
+		$this->user 				= $mx_user;
+		$this->db 					= $db;
+		$this->helper 				= $mx_cache;
+		$this->request 			= $mx_request_vars;
+		$this->auth 				= $phpbb_auth;
+		$this->container 			= $mx_cache;
+		$this->cache 				= $mx_cache;
+		$this->pafiledb_cache 		= $pafiledb_cache;
+		$this->config 				= $board_config;
+		$this->pagination 			= $mx_cache;
+		$this->extension_manager	= $mx_cache;
+		$this->php_ext 				= $phpEx;
+		$this->root_path 			= $mx_root_path;
+		$this->mx_root_path 		= $mx_root_path;
+		$this->module_root_path 	= $module_root_path;
+		$this->phpbb_root_path 	= $phpbb_root_path;
+		$this->pa_files_table 	= PA_FILES_TABLE;
+		$this->pa_cat_table 	= PA_CAT_TABLE;
+		$this->pa_config_table 	= PA_CONFIG_TABLE;
+		$this->pa_votes_table 		= PA_VOTES_TABLE;
+		$this->pa_comments_table 	= PA_COMMENTS_TABLE;
+		$this->pa_license_table 	= PA_LICENSE_TABLE;
+		$this->pa_auth_access_table = PA_AUTH_ACCESS_TABLE;
+		
+		$this->ext_name = $this->request->variable('ext_name', 'mx_pafiledb');
+		//$this->module_root_path = $this->ext_path = $this->extension_manager->get_extension_path($this->ext_name, true);
+		$sql = 'SELECT *
+			FROM ' . $this->pa_cat_table . '
+			ORDER BY cat_order ASC';
+
+		if ( !( $result = $this->db->sql_query( $sql ) ) )
+		{
+			$this->message_die(GENERAL_ERROR, 'Couldnt Query categories info', '', __LINE__, __FILE__, $sql);
+		}
+		
+		$cat_rowset = $this->db->sql_fetchrowset($result);
+		$this->db->sql_freeresult($result);
+		
+		//$this->auth->auth($cat_rowset, '');
+
+		for( $i = 0; $i < $cats = count($cat_rowset); $i++ )
+		{
+			if (isset($this->auth_user[$cat_rowset[$i]['cat_id']]['auth_view'] ) && $this->auth_user[$cat_rowset[$i]['cat_id']]['auth_view'] )
+			{
+				$this->cat_rowset[$cat_rowset[$i]['cat_id']] = $cat_rowset[$i];
+				$this->subcat_rowset[$cat_rowset[$i]['cat_parent']][$cat_rowset[$i]['cat_id']] = $cat_rowset[$i];
+				$this->total_cat++;
+
+				//
+				// Comments
+				// Note: some settings are category dependent, but may use default config settings
+				//
+				$this->comments[$cat_rowset[$i]['cat_id']]['activated'] = $cat_rowset[$i]['cat_allow_comments'] == -1 ? ($pafiledb_config['use_comments'] == 1 ? true : false ) : ( $cat_rowset[$i]['cat_allow_comments'] == 1 ? true : false );
+
+				switch($this->backend)
+				{
+					case 'internal':
+						$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] = true; // phpBB or internal comments
+						$this->comments[$cat_rowset[$i]['cat_id']]['autogenerate_comments'] = false; // autocreate comments when updated
+						$this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id'] = 0; // phpBB target forum (only used for phpBB comments)
+					break;
+
+					default:
+						$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] = $cat_rowset[$i]['internal_comments'] == -1 ? ($pafiledb_config['internal_comments'] == 1 ? true : false ) : ( $cat_rowset[$i]['internal_comments'] == 1 ? true : false ); // phpBB or internal comments
+						$this->comments[$cat_rowset[$i]['cat_id']]['autogenerate_comments'] = $cat_rowset[$i]['autogenerate_comments'] == -1 ? ($pafiledb_config['autogenerate_comments'] == 1 ? true : false ) : ( $cat_rowset[$i]['autogenerate_comments'] == 1 ? true : false ); // autocreate comments when updated
+						$this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id'] = $cat_rowset[$i]['comments_forum_id'] < 1 ? ( intval($pafiledb_config['comments_forum_id']) ) : ( intval($cat_rowset[$i]['comments_forum_id']) ); // phpBB target forum (only used for phpBB comments)
+					break;
+				}
+
+				if ($this->comments[$cat_rowset[$i]['cat_id']]['activated'] && !$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] && intval($this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id']) < 1)
+				{
+					$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] = true; // autocreate comments when updated
+				}
+				
+				if ($this->comments[$cat_rowset[$i]['cat_id']]['activated'] && !$this->comments[$cat_rowset[$i]['cat_id']]['internal_comments'] && intval($this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id']) < 1)
+				{
+					$this->message_die(GENERAL_ERROR, 'Init Failure, phpBB comments with no target forum_id :( <br> Category: ' . $cat_rowset[$i]['cat_name'] . ' Forum_id: ' . $this->comments[$cat_rowset[$i]['cat_id']]['comments_forum_id']);
+				}
+				
+				//
+				// Ratings
+				//
+				$this->ratings[$cat_rowset[$i]['cat_id']]['activated'] = $cat_rowset[$i]['cat_allow_ratings'] == -1 ? ($pafiledb_config['use_ratings'] == 1 ? true : false ) : ( $cat_rowset[$i]['cat_allow_ratings'] == 1 ? true : false );
+
+				//
+				// Information
+				//
+				$this->information[$cat_rowset[$i]['cat_id']]['activated'] = $cat_rowset[$i]['show_pretext'] == -1 ? ($pafiledb_config['show_pretext'] == 1 ? true : false ) : ( $cat_rowset[$i]['show_pretext'] == 1 ? true : false ); // phpBB or internal ratings
+
+				//
+				// Notification
+				//
+				$this->notification[$cat_rowset[$i]['cat_id']]['activated'] = $cat_rowset[$i]['notify'] == -1 ? (intval($pafiledb_config['notify'])) : ( intval($cat_rowset[$i]['notify']) ); // -1, 0, 1, 2
+				$this->notification[$cat_rowset[$i]['cat_id']]['notify_group'] = $cat_rowset[$i]['notify_group'] == -1 || $cat_rowset[$i]['notify_group'] == 0 ? (intval($pafiledb_config['notify_group'])) : ( intval($cat_rowset[$i]['notify_group']) ); // Group_id
+			}
+		}	
+	}
+	
+	/**
+	* Obtain pafiledb config values
+	*/
+	public function config_values()
+	{
+		$pafiledb_config = $pafiledb_cached_config = array();
+		if (($this->pafiledb_cache->get('pafiledb_config')) === false)
+		{
+			$sql = 'SELECT config_name, config_value, is_dynamic
+				FROM ' . $this->pa_config_table;
+			$result = $this->db->sql_query($sql);
+			while ($row = $this->db->sql_fetchrow($result))
+			{
+				if (!$row['is_dynamic'])
+				{
+					$pafiledb_cached_config[$row['config_name']] = $row['config_value'];
+				}
+				$pafiledb_config[$row['config_name']] = $row['config_value'];
+			}
+			$this->db->sql_freeresult($result);
+			$this->pafiledb_cache->put('pafiledb_config', $pafiledb_cached_config);
+		}
+		else
+		{
+			$sql = 'SELECT config_name, config_value
+				FROM ' . $this->pa_config_table . '
+				WHERE is_dynamic = 1';
+			if ( !( $result = $this->db->sql_query($sql) ) )
+			{
+				$this->message_die(GENERAL_ERROR, 'Couldnt query publisher configuration', '', __LINE__, __FILE__, $sql );
+			}
+
+			while ($row = $this->db->sql_fetchrow($result))
+			{
+				$pafiledb_config[$row['config_name']] = $row['config_value'];
+			}
+			$this->db->sql_freeresult($result);
+		}				
+		return $pafiledb_config;
+	}
+	
 	/**
 	 * This class is used for general pafiledb handling
 	 *
@@ -91,7 +335,7 @@ class pafiledb_functions
 		
 		if (($pafiledb_config = $pafiledb_cache->get('config')) && ($use_cache))
 		{
-			return $config;
+			return $pafiledb_config;
 		}
 		else
 		{		
@@ -102,7 +346,7 @@ class pafiledb_functions
 			{
 				if (!function_exists('mx_message_die'))
 				{
-					die("Couldnt query pafiledb configuration, Allso this hosting or server is using a cache optimizer not compatible with MX-Publisher or just lost connection to database wile query.");
+					die("Couldnt query pafiledb configuration, Allso this hosting or server is using a cache optimizer not compatible with MX-pafiledb or just lost connection to database wile query.");
 				}
 				else
 				{
@@ -121,8 +365,109 @@ class pafiledb_functions
 
 			return($pafiledb_config);
 		}			
-	}	
+	}
+	
+	/**
+	 * Dummy function
+	 */
+	function message_die($msg_code, $msg_text = '', $msg_title = '', $err_line = '', $err_file = '', $sql = '')
+	{		
+		//
+		// Get SQL error if we are debugging. Do this as soon as possible to prevent
+		// subsequent queries from overwriting the status of sql_error()
+		//
+		if (DEBUG && ($msg_code == GENERAL_ERROR || $msg_code == CRITICAL_ERROR))
+		{
+				
+			if ( isset($sql) )
+			{
+				//$sql_error = array(@print_r(@$this->db->sql_error($sql)));				
+				$sql_error['message'] = $sql_error['message'] ? $sql_error['message'] : '<br /><br />SQL : ' . $sql; 
+				$sql_error['code'] = $sql_error['code'] ? $sql_error['code'] : 0;			
+			}
+			else
+			{
+				$sql_error = array(@print_r(@$this->db->sql_error_returned));				
+				$sql_error['message'] = $sql_error['message'] ? $sql_error['message'] : '<br /><br />SQL : ' . $sql; 
+				$sql_error['code'] = $sql_error['code'] ? $sql_error['code'] : 0;					
+			}			
+			
+			$debug_text = '';
 
+			if ( isset($sql_error['message']) )
+			{
+				$debug_text .= '<br /><br />SQL Error : ' . $sql_error['code'] . ' ' . $sql_error['message'];
+			}
+
+			if ( isset($sql_store) )
+			{
+				$debug_text .= "<br /><br />$sql_store";
+			}
+
+			if ( isset($err_line) && isset($err_file) )
+			{
+				$debug_text .= '</br /><br />Line : ' . $err_line . '<br />File : ' . $err_file;
+			}
+		}		
+		
+		switch($msg_code)
+		{
+			case GENERAL_MESSAGE:
+				if ( $msg_title == '' )
+				{
+					$msg_title = $this->user->lang('Information');
+				}
+			break;
+
+			case CRITICAL_MESSAGE:
+				if ( $msg_title == '' )
+				{
+					$msg_title = $this->user->lang('Critical_Information');
+				}
+			break;
+
+			case GENERAL_ERROR:
+				if ( $msg_text == '' )
+				{
+					$msg_text = $this->user->lang('An_error_occured');
+				}
+
+				if ( $msg_title == '' )
+				{
+					$msg_title = $this->user->lang('General_Error');
+				}
+			break;
+
+			case CRITICAL_ERROR:
+
+				if ($msg_text == '')
+				{
+					$msg_text = $this->user->lang('A_critical_error');
+				}
+
+				if ($msg_title == '')
+				{
+					$msg_title = 'phpBB : <b>' . $this->user->lang('Critical_Error') . '</b>';
+				}
+			break;
+		}
+		
+		//
+		// Add on DEBUG info if we've enabled debug mode and this is an error. This
+		// prevents debug info being output for general messages should DEBUG be
+		// set TRUE by accident (preventing confusion for the end user!)
+		//
+		if ( DEBUG && ( $msg_code == GENERAL_ERROR || $msg_code == CRITICAL_ERROR ) )
+		{
+			if ( $debug_text != '' )
+			{
+				$msg_text = $msg_text . '<br /><br /><b><u>DEBUG MODE</u></b> ' . $debug_text;
+			}
+		}		
+		
+		trigger_error($msg_title . ': ' . $msg_text);
+	}  
+	
 	/**
 	 * Enter description here...
 	 *
@@ -543,7 +888,8 @@ class pafiledb_functions
 	function get_extension( $filename )
 	{
 		//return strtolower( array_pop( explode( '.', $filename ) ) );
-		return strtolower( array_pop( $array = (explode( '.', $filename ))) );
+		$array = explode('.', $filename);
+		return strtolower(array_pop($array));
 	}
 
 	/**

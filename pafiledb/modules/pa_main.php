@@ -24,7 +24,7 @@ class pafiledb_main extends pafiledb_public
 	 *
 	 * @param unknown_type $action
 	 */
-	function main( $action  = false )
+	function main($action = false)
 	{
 		global $template, $lang, $board_config, $phpEx, $pafiledb_config, $debug, $phpbb_root_path;
 

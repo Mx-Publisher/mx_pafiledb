@@ -44,14 +44,14 @@ $sql = array();
 // Precheck
 if ( $result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . "pa_config" ) )
 {
-
 	// Upgrade checks
 	$upgrade_103 = 0;
 	$upgrade_201 = 0;
 	$upgrade_280 = 0; // mxp 2.8 branch ->
 	$upgrade_225 = 0;
 	$upgrade_226 = 0;
-
+	$upgrade_230 = 0;
+	
 	$message = "<b>Upgrading!</b><br/><br/>";
 	// validate before 1.0.3
 	if ( !$result = $db->sql_query( "SELECT auth_edit_file from " . $mx_table_prefix . "pa_cat" ) )
@@ -120,7 +120,18 @@ if ( $result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . "
 	{
 		$message .= "<b>Validating v. 2.2.6...ok</b><br/><br/>";
 	}	
-
+	
+	// validate before 2.3.0
+	if ( !$result = $db->sql_query( "SELECT is_dynamic from " . $mx_table_prefix . "pa_config" ) )
+	{
+		$upgrade_230= 1;
+		$message .= "<b>Upgrading v. 2.3.0...ok</b><br/><br/>";
+	}
+	else
+	{
+		$message .= "<b>Validating v. 2.3.0...ok</b><br/><br/>";
+	}
+	
 	// ------------------------------------------------------------------------------------------------------
 	if ( $upgrade_103 == 1 )
 	{
@@ -262,7 +273,18 @@ if ( $result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . "
 	{
 		$message .= "<b>Nothing to upgrade...</b><br/><br/>";
 	}
-
+	
+	if ( $upgrade_230 == 1 )
+	{
+		// Upgrade the config table to avoid duplicate entries
+		$sql[] = "ALTER TABLE " . $mx_table_prefix . "pa_config ADD `is_dynamic` tinyint(1) UNSIGNED NOT NULL DEFAULT '0'";
+		$sql[] = "ALTER TABLE " . $mx_table_prefix . "pa_config ADD KEY `is_dynamic` (`is_dynamic`)";
+	}
+	else
+	{
+		$message .= "<b>Nothing to upgrade...</b><br/><br/>";
+	}
+	
 	if ( !MXBB_27x )
 	{
 		$sql[] = "UPDATE " . $mx_table_prefix . "module" . "

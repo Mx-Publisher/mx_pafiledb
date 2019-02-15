@@ -15,8 +15,9 @@ if ( !defined( 'IN_PORTAL' ) || !defined( 'IN_ADMIN' ) )
 
 class pafiledb_fchecker_manage extends pafiledb_admin
 {
-	function main( $action )
+	function main( $module_id = false )
 	{
+		$action = $module_id;
 		global $db, $images, $template, $lang, $phpEx, $pafiledb_functions, $pafiledb_cache, $pafiledb_config, $phpbb_root_path, $module_root_path, $mx_root_path, $mx_request_vars;
 
 		$this_dir = $module_root_path . 'pafiledb/uploads/';

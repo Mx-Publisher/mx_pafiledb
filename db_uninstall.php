@@ -8,7 +8,7 @@
 *
 */
 
-define( 'IN_PORTAL', true );
+@define( 'IN_PORTAL', true );
 if ( !defined( 'IN_ADMIN' ) )
 {
 	$mx_root_path = './../../';

@@ -33,7 +33,7 @@ if ( @file_exists( './../viewtopic.'.$phpEx ) )
 }
 else
 {
-	define( 'MXBB_MODULE', true );
+	@define( 'MXBB_MODULE', true );
 
 	//
 	// Main paths
@@ -42,23 +42,23 @@ else
 	$module_root_path = './../../../modules/mx_pafiledb/';
 
 	//
-	// Left Pane Paths
+	// Left Pane Paths (Ported as Mx-Addon)
 	//
 	$setmodules_root_path = './../';
 	$setmodules_module_path = 'modules/mx_pafiledb/';
 	$setmodules_admin_path = $setmodules_module_path . 'admin/';
 
-	define( 'MXBB_27x', file_exists( $setmodules_root_path . 'mx_login.php' ) );
+	@define( 'MXBB_27x', file_exists( $setmodules_root_path . 'mx_login.php' ) );
 
 	$phpEx = substr(strrchr(__FILE__, '.'), 1);
 }
-
 if ( !empty( $setmodules ) )
 {
-
 	$filename = basename( __FILE__ );
 	$module['pafileDB_Download']['0_Configuration'] 	= $setmodules_admin_path . $filename . "?action=settings";
 	$module['pafileDB_Download']['1_Cat_manage'] 		= $setmodules_admin_path . $filename . "?action=cat_manage";
+	$module['pafileDB_Download']['2_File_manage'] 		= $setmodules_admin_path . $filename . "?action=file_manage";
+	//$module['pafileDB_Download']['2_File_manage'] = mx_append_sid( $admin_module_root_path . 'admin_pa_file.' . $phpEx . '?action=file_manage');
 	//$module['pafileDB_Download']['2_File_manage'] 		= $setmodules_admin_path . $filename . "?action=file_manage";
 	$module['pafileDB_Download']['3_Permissions'] 		= $setmodules_admin_path . $filename . "?action=catauth_manage";
 	$module['pafileDB_Download']['4_License'] 			= $setmodules_admin_path . $filename . "?action=license_manage";
@@ -66,12 +66,12 @@ if ( !empty( $setmodules ) )
 	$module['pafileDB_Download']['6_Fchecker'] 			= $setmodules_admin_path . $filename . "?action=fchecker_manage";
 	return;
 }
-
+@define('IN_PORTAL', 1);
 //
 // Includes
 //
-require( $mx_root_path . '/admin/pagestart.' . $phpEx );
-include_once( $setmodules_root_path . $setmodules_module_path . 'pafiledb/includes/pafiledb_constants.' . $phpEx );
+include( $mx_root_path . '/admin/pagestart.' . $phpEx );
+include( $module_root_path . 'pafiledb/includes/pafiledb_constants.' . $phpEx );
 include( $module_root_path . 'pafiledb/pafiledb_common.' . $phpEx );
 
 // **********************************************************************
@@ -106,17 +106,30 @@ else
 $action = ( isset( $_REQUEST['action'] ) ) ? htmlspecialchars( $_REQUEST['action'] ) : 'setting';
 
 //
+// expected actions
+//
+@define( 'settings', 'settings' );
+@define( 'cat_manage', 'cat_manage' );
+@define( 'file_manage', 'file_manage' );
+@define( 'catauth_manage', 'catauth_manage' );
+@define( 'ug_auth_manage', 'ug_auth_manage' );
+@define( 'license_manage', 'license_manage' );
+@define( 'custom_manage', 'custom_manage' );
+@define( 'fchecker_manage', 'fchecker_manage' );
+
+//
 // an array of all expected actions
 //
 $actions = array(
 	'settings' => 'settings',
 	'cat_manage' => 'cat_manage',
-	//'file_manage' => 'file_manage',
+	'file_manage' => 'file_manage',
 	'catauth_manage' => 'catauth_manage',
 	'ug_auth_manage' => 'ug_auth_manage',
 	'license_manage' => 'license_manage',
 	'custom_manage' => 'custom_manage',
-	'fchecker_manage' => 'fchecker_manage' );
+	'fchecker_manage' => 'fchecker_manage'
+	);
 
 //
 // Lets Build the page

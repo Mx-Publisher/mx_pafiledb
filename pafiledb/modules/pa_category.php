@@ -49,19 +49,19 @@ class pafiledb_category extends pafiledb_public
 			{
 				case 'file_name':
 					$sort_method = 'file_name';
-					break;
+				break;
 				case 'file_time':
 					$sort_method = 'file_time';
-					break;
+				break;
 				case 'file_dls':
 					$sort_method = 'file_dls';
-					break;
+				break;
 				case 'file_rating':
 					$sort_method = 'rating';
-					break;
+				break;
 				case 'file_update_time':
 					$sort_method = 'file_update_time';
-					break;
+				break;
 				default:
 					$sort_method = $pafiledb_config['sort_method'];
 			}

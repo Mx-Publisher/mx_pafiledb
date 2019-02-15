@@ -15,8 +15,9 @@ if ( !defined( 'IN_PORTAL' ) || !defined( 'IN_ADMIN' ) )
 
 class pafiledb_catauth_manage extends pafiledb_admin
 {
-	function main( $action )
+	function main( $module_id = false )
 	{
+		$action = $module_id;
 		global $db, $images, $template, $template, $lang, $phpEx, $pafiledb_functions, $pafiledb_cache, $pafiledb_config, $phpbb_root_path, $module_root_path, $mx_root_path, $mx_request_vars;
 		global $cat_auth_fields, $cat_auth_const, $cat_auth_levels, $global_auth_fields;
 		global $cat_auth_approval_fields, $cat_auth_approval_const, $cat_auth_approval_levels;

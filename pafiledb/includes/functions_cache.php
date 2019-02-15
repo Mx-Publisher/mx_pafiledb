@@ -200,7 +200,7 @@ class pafiledb_cache
 	function format_array( $array )
 	{
 		$lines = array();
-		if ( is_array( $v ) )
+		if ( is_array( $array ) )
 		{		
 			foreach ( $array as $k => $v )
 			{

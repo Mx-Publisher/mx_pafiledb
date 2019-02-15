@@ -249,9 +249,11 @@ class pafiledb_user_upload extends pafiledb_public
 		// =======================================================
 		// IF not submit then load data MAIN form
 		// =======================================================
-		{
+		{			
+			
 			if ( !$file_id )
 			{
+				
 				$file_name = '';
 				$file_desc = '';
 				$file_long_desc = '';
@@ -276,6 +278,7 @@ class pafiledb_user_upload extends pafiledb_public
 				$custom_exist = $custom_field->display_edit();
 				$mode = 'ADD';
 				$l_title = $lang['Afiletitle'];
+				
 			}
 			else
 			{
@@ -319,8 +322,9 @@ class pafiledb_user_upload extends pafiledb_public
 					$message = sprintf( $lang['Sorry_auth_edit'], $this->auth_user[$cat_id]['auth_edit_type'] );
 					mx_message_die( GENERAL_MESSAGE, $message );
 				}
+								
 			}
-
+			
 			$s_hidden_fields .= '<input type="hidden" name="action" value="user_upload">';
 
 			$template->assign_vars( array(
@@ -406,6 +410,7 @@ class pafiledb_user_upload extends pafiledb_public
 
 			$this->display( $lang['Download'], 'pa_file_add.tpl' );
 		}
+		
 	}
 }
 ?>

@@ -8,7 +8,7 @@
 *
 */
 
-define( 'IN_PORTAL', true );
+@define( 'IN_PORTAL', true );
 if ( !defined( 'IN_ADMIN' ) )
 {
 	$mx_root_path = './../../';
@@ -57,14 +57,22 @@ if ( !$result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . 
 		"DROP TABLE IF EXISTS " . $mx_table_prefix . "pa_votes ",
 		"DROP TABLE IF EXISTS " . $mx_table_prefix . "pa_mirrors ",
 		"DROP TABLE IF EXISTS " . $mx_table_prefix . "pa_files ",
-
+		
+		// --------------------------------------------------------
 		// Table structure for table `pa_cat`
 		"CREATE TABLE " . $mx_table_prefix . "pa_cat (
 		  `cat_id` int(10) NOT NULL auto_increment,
 		  `cat_name` mediumtext,
 		  `cat_desc` mediumtext,
+		  `cat_sub_dir` varchar(255) NOT NULL default '',		  
 		  `cat_parent` int(50) default NULL,
 		  `parents_data` mediumtext,
+		  `left_id` mediumint(8) NOT NULL default '-1',
+		  `right_id` mediumint(8) NOT NULL default '-1',
+		  `cat_name_show` tinyint(2) NOT NULL default '1',
+		  `cat_desc_uid` varchar(8) NOT NULL default 'a9fmpm6m',
+		  `cat_desc_bitfield` varchar(8) NOT NULL default 'QQ==',
+		  `cat_desc_options` mediumint(8) NOT NULL default '-1',		  
 		  `cat_order` int(50) default NULL,
 		  `cat_allow_file` tinyint(2) NOT NULL default '0',
 		  `cat_allow_ratings` tinyint(2) NOT NULL default '-1',
@@ -95,14 +103,19 @@ if ( !$result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . 
 		  `notify_group` mediumint(8) NOT NULL default '-1',
 		  `auth_approval_edit` tinyint(2) NOT NULL default '0',
 		  PRIMARY KEY  (`cat_id`)
-		) ENGINE=MyISAM", 
+		) ", 
 
 		//
 		// Insert
 		//
-		"INSERT INTO " . $mx_table_prefix . "pa_cat (`cat_id`, `cat_name`, `cat_desc`, `cat_parent`, `parents_data`, `cat_order`, `cat_allow_file`, `cat_allow_ratings`, `cat_allow_comments`, `cat_files`, `cat_last_file_id`, `cat_last_file_name`, `cat_last_file_time`, `auth_view`, `auth_read`, `auth_view_file`, `auth_edit_file`, `auth_delete_file`, `auth_upload`, `auth_download`, `auth_rate`, `auth_email`, `auth_view_comment`, `auth_post_comment`, `auth_edit_comment`, `auth_delete_comment`, `auth_approval`, `internal_comments`, `autogenerate_comments`, `comments_forum_id`, `show_pretext`, `notify`, `notify_group`, `auth_approval_edit`) VALUES(1, 'My Category', '', 0, '', 0, 0, -1, -1, -1, 0, '-1', 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
+		"INSERT INTO " . $mx_table_prefix . "pa_cat (`cat_id`, `cat_name`, `cat_desc`, `cat_parent`, `parents_data`, `cat_order`, `cat_allow_file`, `cat_allow_ratings`, `cat_allow_comments`, `cat_files`, `cat_last_file_id`, `cat_last_file_name`, `cat_last_file_time`, `auth_view`, `auth_read`, `auth_view_file`, `auth_edit_file`, `auth_delete_file`, `auth_upload`, `auth_download`, `auth_rate`, `auth_email`, `auth_view_comment`, `auth_post_comment`, `auth_edit_comment`, `auth_delete_comment`, `auth_approval`, `internal_comments`, `autogenerate_comments`, `comments_forum_id`, `show_pretext`, `notify`, `notify_group`, `auth_approval_edit`) VALUES(1, 'My Example Category #1', 'My Example Category Description.', 0, '', 0, 0, -1, -1, -1, 0, '-1', 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
 		"INSERT INTO " . $mx_table_prefix . "pa_cat (`cat_id`, `cat_name`, `cat_desc`, `cat_parent`, `parents_data`, `cat_order`, `cat_allow_file`, `cat_allow_ratings`, `cat_allow_comments`, `cat_files`, `cat_last_file_id`, `cat_last_file_name`, `cat_last_file_time`, `auth_view`, `auth_read`, `auth_view_file`, `auth_edit_file`, `auth_delete_file`, `auth_upload`, `auth_download`, `auth_rate`, `auth_email`, `auth_view_comment`, `auth_post_comment`, `auth_edit_comment`, `auth_delete_comment`, `auth_approval`, `internal_comments`, `autogenerate_comments`, `comments_forum_id`, `show_pretext`, `notify`, `notify_group`, `auth_approval_edit`) VALUES(2, 'Test Cagegory', 'Just a test category', 1, '', 0, 1, -1, -1, -1, 0, '-1', 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",		
-
+		
+		// --------------------------------------------------------
+		// Table structure for table `phpbb_pub_articles`
+		// _articles table only required in knowledge base aka "kb" 
+		// and/or mx_publisher mxp module or phpbb extension.
+		
 		// --------------------------------------------------------
 		// Table structure for table `phpbb_pa_files`
 		"CREATE TABLE " . $mx_table_prefix . "pa_files (
@@ -144,9 +157,11 @@ if ( !$result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . 
 		// --------------------------------------------------------
 		// Table structure for table `phpbb_pa_config`
 		"CREATE TABLE " . $mx_table_prefix . "pa_config (
-			  config_name varchar(255) NOT NULL default '',
-			  config_value varchar(255) NOT NULL default '',
-			  PRIMARY KEY  (config_name)
+		  `config_name` varchar(155) NOT NULL DEFAULT '',
+		  `config_value` varchar(155) NOT NULL DEFAULT '',
+		  `is_dynamic` tinyint(1) UNSIGNED NOT NULL DEFAULT '0',
+		  PRIMARY KEY (`config_name`),
+		  KEY `is_dynamic` (`is_dynamic`)
 		)",
 
 		// --------------------------------------------------------
@@ -161,9 +176,22 @@ if ( !$result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . 
 			  `poster_id` mediumint(8) NOT NULL default '0',
 			  PRIMARY KEY  (`comments_id`),
 			  KEY `comments_id` (`comments_id`),
-			  FULLTEXT KEY `comment_bbcode_uid` (`comment_bbcode_uid`)
-		) ENGINE=MyISAM",
-
+			  KEY `comment_bbcode_uid` (`comment_bbcode_uid`)
+		) ",
+		
+		// --------------------------------------------------------
+		// Table structure for table `phpbb_pa_custom`
+		"CREATE TABLE " . $mx_table_prefix . "pa_custom (
+			  `custom_id` int(50) NOT NULL auto_increment,
+			  `custom_name` text NOT NULL,
+			  `custom_description` text NOT NULL,
+			  `data` text NOT NULL,
+			  `field_order` int(20) NOT NULL default '0',
+			  `field_type` tinyint(2) NOT NULL default '0',
+			  `regex` varchar(255) NOT NULL default '',
+			  PRIMARY KEY `custom_id` (custom_id)
+		)",	
+		
 		// --------------------------------------------------------
 		// Table structure for table `phpbb_pa_customdata`
 		"CREATE TABLE " . $mx_table_prefix . "pa_customdata (
@@ -255,77 +283,77 @@ if ( !$result = $db->sql_query( "SELECT config_name from " . $mx_table_prefix . 
 		//
 
 		// General
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('enable_module', '1')", // settings_disable
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('module_name', 'Download Database')", // settings_dbname
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('wysiwyg_path', 'modules/mx_shared/')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('upload_dir','pafiledb/uploads/')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('screenshots_dir','pafiledb/images/screenshots/')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('enable_module', '1')", // settings_disable
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('module_name', 'Download Database')", // settings_dbname
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('wysiwyg_path', 'modules/mx_shared/')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('upload_dir','pafiledb/uploads/')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('screenshots_dir','pafiledb/images/screenshots/')",
 
 		// Files
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('max_file_size','10485760')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('forbidden_extensions','php, php3, php4, phtml, pl, asp, aspx, cgi')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('hotlink_prevent', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('hotlink_allowed', '')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('tpl_php', '0')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('max_file_size','10485760')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('forbidden_extensions','php, php3, php4, phtml, pl, asp, aspx, cgi')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('hotlink_prevent', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('hotlink_allowed', '')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('tpl_php', '0')",
 
 		// Appearance
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('sort_method', 'file_time')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('sort_order', 'DESC')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('pagination', '20')", // art_pagination & settings_file_page
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('sort_method', 'file_time')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('sort_order', 'DESC')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('pagination', '20')", // art_pagination & settings_file_page
 
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('settings_stats', '')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('settings_viewall', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('settings_dbdescription', '')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('settings_topnumber', '10')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('settings_stats', '')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('settings_viewall', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('settings_dbdescription', '')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('settings_topnumber', '10')",
 
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('use_simple_navigation', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('cat_col', '2')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('settings_newdays', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('use_simple_navigation', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('cat_col', '2')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('settings_newdays', '1')",
 
 		// Comments
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('use_comments', '0')", // comments_show
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('internal_comments', '1')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('formatting_comment_wordwrap', '1')", // formatting_comment_fixup
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('formatting_comment_image_resize', '300')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('formatting_comment_truncate_links', '1')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('max_comment_subject_chars', '50')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('max_comment_chars', '5000')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('allow_comment_wysiwyg', '0')", // allow_wysiwyg_comments & allow_wysiwyg
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('allow_comment_html', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('allow_comment_bbcode', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('allow_comment_smilies', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('allow_comment_links', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('allow_comment_images', '0')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('no_comment_image_message', '[No image please]')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('no_comment_link_message', '[No links please]')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('allowed_comment_html_tags', 'b,i,u,a')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('del_topic', '1')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('autogenerate_comments', '1')",	// NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('comments_pagination', '5')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('comments_forum_id', '0')", // New
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('use_comments', '0')", // comments_show
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('internal_comments', '1')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('formatting_comment_wordwrap', '1')", // formatting_comment_fixup
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('formatting_comment_image_resize', '300')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('formatting_comment_truncate_links', '1')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('max_comment_subject_chars', '50')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('max_comment_chars', '5000')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('allow_comment_wysiwyg', '0')", // allow_wysiwyg_comments & allow_wysiwyg
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('allow_comment_html', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('allow_comment_bbcode', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('allow_comment_smilies', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('allow_comment_links', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('allow_comment_images', '0')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('no_comment_image_message', '[No image please]')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('no_comment_link_message', '[No links please]')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('allowed_comment_html_tags', 'b,i,u,a')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('del_topic', '1')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('autogenerate_comments', '1')",	// NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('comments_pagination', '5')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('comments_forum_id', '0')", // New
 
 		// Ratings
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('use_ratings', '0')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('votes_check_userid', '1')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('votes_check_ip', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('use_ratings', '0')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('votes_check_userid', '1')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('votes_check_ip', '1')",
 
 		// Instructions
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('show_pretext', '0')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('pt_header', 'File Submission Instructions')", // NEW
-		"INSERT INTO " . $mx_table_prefix . "pa_config values ('pt_body', 'Please check your references and include as much information as you can.')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('show_pretext', '0')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('pt_header', 'File Submission Instructions')", // NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) values ('pt_body', 'Please check your references and include as much information as you can.')", // NEW
 
 		// Notifications
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('notify', '0')", // pm_notify
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('notify_group', '0')",	// NEW
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('notify', '0')", // pm_notify
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('notify_group', '0')",	// NEW
 
 		// Permissions
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('auth_search','0')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('auth_stats','0')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('auth_toplist','0')",
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('auth_viewall','0')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('auth_search','0')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('auth_stats','0')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('auth_toplist','0')",
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('auth_viewall','0')",
 		
 		//Screen Shots Settings  (Go Here)
-		"INSERT INTO " . $mx_table_prefix . "pa_config VALUES ('resize_ss', '0')", //To do (for security reasons to filter uploaded files using php GD extension)		
+		"INSERT INTO " . $mx_table_prefix . "pa_config (`config_name`, `config_value`) VALUES ('resize_ss', '0')", //To do (for security reasons to filter uploaded files using php GD extension)		
 
 		);
 

@@ -83,21 +83,8 @@ else
 	include_once( $mx_root_path . 'includes/mx_functions_tools.' . $phpEx );
 }
 
-// **********************************************************************
-// If phpBB mod read language definition
-// **********************************************************************
 
-if ( !MXBB_MODULE )
-{
-	if ( !file_exists( $module_root_path . 'pafiledb/language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx ) )
-	{
-		include( $module_root_path . 'pafiledb/language/lang_english/lang_main.' . $phpEx );
-	}
-	else
-	{
-		include( $module_root_path . 'pafiledb/language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx );
-	}
-}
+
 
 // **********************************************************************
 //  If phpBB mod read theme definition and language in theme definition

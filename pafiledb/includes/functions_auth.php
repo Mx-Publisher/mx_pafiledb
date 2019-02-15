@@ -1,9 +1,9 @@
 <?php
 /**
 *
-* @package MX-Publisher Module - mx_pafiledb
-* @version $Id: functions_auth.php,v 1.5 2008/06/03 20:17:05 jonohlsson Exp $
-* @copyright (c) 2002-2006 [Mohd Basri, PHP Arena, pafileDB, Jon Ohlsson] MX-Publisher Project Team
+* @package MX-pafiledb Module - mx_pafiledb
+* @version $Id: functions_auth.php,v 1.2 2008/10/26 08:36:06 orynider Exp $
+* @copyright (c) 2002-2006 [Mohd Basri, PHP Arena, pafileDB, Jon Ohlsson] MX-pafiledb Project Team
 * @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
 *
 */
@@ -44,9 +44,50 @@ if ( !defined( 'IN_PORTAL' ) )
  */
 class mx_pafiledb_auth
 {
+	/** @var \orynider\pafiledb\core\functions */
+	protected $functions;
+	/** @var \phpbb\template\template */
+	protected $template;
+	/** @var \phpbb\user */
+	protected $user;	
+	/** @var \phpbb\db\driver\driver_interface */
+	protected $db; 
+	/** @var \phpbb\request\request */
+	protected $request; 	
+	/** @var \phpbb\auth\auth */
+	protected $auth;
+	
 	var $auth_user = array();
 	var $auth_global = array();
+	
+	public function mx_pafiledb_auth()
+	{
+		global $pafiledb_functions, 
+		$template, 
+		$mx_user, 
+		$db,
+		$mx_request_vars,
+		$phpbb_auth,
+		$pub_auth_access_table;
+		
+		$this->functions 	= $pafiledb_functions;
+		$this->template 	= $template;
+		$this->user 		= $mx_user;
+		$this->db 			= $db;
+		$this->request 	= $mx_request_vars;
+		$this->auth 		= $phpbb_auth;
+		$this->pa_auth_access_table = PA_AUTH_ACCESS_TABLE;
+		
+		$this->is_admin = ( $this->user->data['user_level'] == ADMIN && $this->user->data['session_logged_in'] ) ? true : 0;
+		$this->is_mod = ( $this->user->data['user_level'] == MOD && $this->user->data['session_logged_in'] ) ? true : 0;				
 
+		$this->auth_fields = array( 'auth_view', 'auth_read', 'auth_view_file', 'auth_edit_file', 'auth_delete_file', 'auth_upload', 'auth_download', 'auth_rate', 'auth_email', 'auth_view_comment', 'auth_post_comment', 'auth_edit_comment', 'auth_delete_comment', 'auth_approval', 'auth_approval_edit' );
+		$this->auth_fields_global = array( 'auth_search', 'auth_stats', 'auth_toplist', 'auth_viewall' );
+		
+		// Read out config values
+		$this->pafiledb_config = $pafiledb_functions->config_values();
+	}
+	
 	/**
 	 * Auth.
 	 *
@@ -57,7 +98,7 @@ class mx_pafiledb_auth
 	 */
 	function auth( $c_access )
 	{
-		global $db, $db, $lang, $userdata, $pafiledb_config;
+		global $db, $lang, $userdata, $mx_user, $pafiledb_config, $phpbb_auth;
 
 		$a_sql = 'a.auth_view, a.auth_read, a.auth_view_file, a.auth_edit_file, a.auth_delete_file, a.auth_upload, a.auth_download, a.auth_rate, a.auth_email, a.auth_view_comment, a.auth_post_comment, a.auth_edit_comment, a.auth_delete_comment, a.auth_mod, a.auth_search, a.auth_stats, a.auth_toplist, a.auth_viewall, a.auth_approval, a.auth_approval_edit';
 		$auth_fields = array( 'auth_view', 'auth_read', 'auth_view_file', 'auth_edit_file', 'auth_delete_file', 'auth_upload', 'auth_download', 'auth_rate', 'auth_email', 'auth_view_comment', 'auth_post_comment', 'auth_edit_comment', 'auth_delete_comment', 'auth_approval', 'auth_approval_edit' );
@@ -66,14 +107,13 @@ class mx_pafiledb_auth
 		// If the user isn't logged on then all we need do is check if the forum
 		// has the type set to ALL, if yes they are good to go, if not then they
 		// are denied access
-
 		$u_access = array();
 		$global_u_access = array();
-		if ( $userdata['session_logged_in'] )
+		if ($mx_user->data['user_id'] != 1)
 		{
 			$sql = "SELECT a.cat_id, a.group_id, $a_sql
 				FROM " . PA_AUTH_ACCESS_TABLE . " a, " . USER_GROUP_TABLE . " ug
-				WHERE ug.user_id = {$userdata['user_id']}
+				WHERE ug.user_id = {$mx_user->data['user_id']}
 					AND ug.user_pending = 0
 					AND a.group_id = ug.group_id";
 			if ( !( $result = $db->sql_query( $sql ) ) )
@@ -81,26 +121,23 @@ class mx_pafiledb_auth
 				mx_message_die( GENERAL_ERROR, 'Failed obtaining category access control lists', '', __LINE__, __FILE__, $sql );
 			}
 
-			if ( $row = $db->sql_fetchrow( $result ) )
+			while ( $row = $db->sql_fetchrow( $result ) )
 			{
-				do
+				if ( $row['cat_id'] )
 				{
-					if ( $row['cat_id'] )
-					{
-						$u_access[$row['cat_id']][] = $row;
-					}
-					else
-					{
-						$global_u_access = $row;
-					}
+					$u_access[$row['cat_id']][] = $row;
 				}
-				while ( $row = $db->sql_fetchrow( $result ) );
+				else
+				{
+					$global_u_access = $row;
+				}				
 			}
 		}
+		
+		$is_admin = ($mx_user->data['user_level'] == ADMIN && $mx_user->data['user_id'] !== 1) ? true : 0;
+		//$is_admin = $auth->acl_get('a_') ? true : 0;
 
-		$is_admin = ( $userdata['user_level'] == ADMIN && $userdata['session_logged_in'] ) ? true : 0;
-
-		for( $i = 0; $i < count( $auth_fields ); $i++ )
+		for( $i = 0; $i < count($auth_fields); $i++ )
 		{
 			$key = $auth_fields[$i];
 
@@ -123,42 +160,46 @@ class mx_pafiledb_auth
 				switch ( $value )
 				{
 					case AUTH_ALL:
-						$this->auth_user[$c_cat_id][$key] = true;
-						$this->auth_user[$c_cat_id][$key . '_type'] = $lang['Auth_Anonymous_users'];
-						break;
+						$auth_user[$c_cat_id][$key] = true;
+						$auth_user[$c_cat_id][$key . '_type'] = $mx_user->lang('Auth_Anonymous_users');
+					break;
 
 					case AUTH_REG:
-						$this->auth_user[$c_cat_id][$key] = ( $userdata['session_logged_in'] ) ? true : 0;
-						$this->auth_user[$c_cat_id][$key . '_type'] = $lang['Auth_Registered_Users'];
-						break;
+						$auth_user[$c_cat_id][$key] = ($mx_user->data['user_id'] !== 1) ? true : 0;
+						$auth_user[$c_cat_id][$key . '_type'] = $mx_user->lang('Auth_Registered_Users');
+					break;
 
 					case AUTH_ACL:
-						$this->auth_user[$c_cat_id][$key] = ( $userdata['session_logged_in'] ) ? $this->auth_check_user( AUTH_ACL, $key, $u_access[$c_cat_id], $is_admin ) : 0;
-						$this->auth_user[$c_cat_id][$key . '_type'] = $lang['Auth_Users_granted_access'];
-						break;
+						$auth_user[$c_cat_id][$key] = ($mx_user->data['user_id'] !== 1) ? $this->auth_check_user( AUTH_ACL, $key, $u_access[$c_cat_id], $is_admin ) : 0;		
+						$auth_user[$c_cat_id][$key . '_type'] = $mx_user->lang('Auth_Users_granted_access');
+					break;
 
 					case AUTH_MOD:
-						$this->auth_user[$c_cat_id][$key] = ( $userdata['session_logged_in'] ) ? $this->auth_check_user( AUTH_MOD, 'auth_mod', $u_access[$c_cat_id], $is_admin ) : 0;
-						$this->auth_user[$c_cat_id][$key . '_type'] = $lang['Auth_Moderators'];
-						break;
+						$auth_user[$c_cat_id][$key] = ($mx_user->data['user_id'] !== 1) ? $this->auth_check_user( AUTH_MOD, 'auth_mod', $u_access[$c_cat_id], $is_admin ) : 0;
+						$auth_user[$c_cat_id][$key . '_type'] = $mx_user->lang('Auth_Moderators');
+					break;
 
 					case AUTH_ADMIN:
-						$this->auth_user[$c_cat_id][$key] = $is_admin;
-						$this->auth_user[$c_cat_id][$key . '_type'] = $lang['Auth_Administrators'];
+						$auth_user[$c_cat_id][$key] = $is_admin;
+						$auth_user[$c_cat_id][$key . '_type'] = $mx_user->lang('Auth_Administrators');
 						break;
 
 					default:
-						$this->auth_user[$c_cat_id][$key] = 0;
-						break;
+						$auth_user[$c_cat_id][$key] = true; //Temp fix for root category
+					break;
 				}
 			}
 		}
-		for( $k = 0; $k < count( $c_access ); $k++ )
+
+		
+		for($k = 0; $k < count($c_access); $k++)
 		{
 			$c_cat_id = $c_access[$k]['cat_id'];
-			$this->auth_user[$c_cat_id]['auth_mod'] = ( $userdata['session_logged_in'] ) ? $this->auth_check_user( AUTH_MOD, 'auth_mod', $u_access[$c_cat_id], $is_admin ) : 0;
+			$auth_user[$c_cat_id]['auth_mod'] = ($mx_user->data['user_id'] !== 1) ? $this->auth_check_user( AUTH_MOD, 'auth_mod', (isset($u_access[$c_cat_id]) ? $u_access[$c_cat_id] : 0), $is_admin ) : 0;
 		}
-
+		
+		$this->auth_user = $auth_user;
+		
 		for( $i = 0; $i < count( $auth_fields_global ); $i++ )
 		{
 			$key = $auth_fields_global[$i];
@@ -168,35 +209,36 @@ class mx_pafiledb_auth
 			switch ( $value )
 			{
 				case AUTH_ALL:
-					$this->auth_global[$key] = true;
-					$this->auth_global[$key . '_type'] = $lang['Auth_Anonymous_users'];
-					break;
+					$auth_global[$key] = true;
+					$auth_global[$key . '_type'] = $mx_user->lang('Auth_Anonymous_users');
+				break;
 
 				case AUTH_REG:
-					$this->auth_global[$key] = ( $userdata['session_logged_in'] ) ? true : 0;
-					$this->auth_global[$key . '_type'] = $lang['Auth_Registered_Users'];
-					break;
+					$auth_global[$key] = ($mx_user->data['user_id'] !== 1) ? true : 0;
+					$auth_global[$key . '_type'] = $mx_user->lang('Auth_Registered_Users');
+				break;
 
 				case AUTH_ACL:
-					$this->auth_global[$key] = ( $userdata['session_logged_in'] ) ? $this->global_auth_check_user( AUTH_ACL, $key, $global_u_access, $is_admin ) : 0;
-					$this->auth_global[$key . '_type'] = $lang['Auth_Users_granted_access'];
-					break;
+					$auth_global[$key] = ($mx_user->data['user_id'] !== 1) ? $this->global_auth_check_user( AUTH_ACL, $key, $global_u_access, $is_admin ) : 0;
+					$auth_global[$key . '_type'] = $mx_user->lang('Auth_Users_granted_access');
+				break;
 
 				case AUTH_MOD:
-					$this->auth_global[$key] = ( $userdata['session_logged_in'] ) ? $this->global_auth_check_user( AUTH_MOD, 'auth_mod', $global_u_access, $is_admin ) : 0;
-					$this->auth_global[$key . '_type'] = $lang['Auth_Moderators'];
-					break;
+					$auth_global[$key] = ($mx_user->data['user_id'] !== 1) ? $this->global_auth_check_user( AUTH_MOD, 'auth_mod', $global_u_access, $is_admin ) : 0;
+					$auth_global[$key . '_type'] = $mx_user->lang('Auth_Moderators');
+				break;
 
 				case AUTH_ADMIN:
-					$this->auth_global[$key] = $is_admin;
-					$this->auth_global[$key . '_type'] = $lang['Auth_Administrators'];
-					break;
+					$auth_global[$key] = $is_admin;
+					$auth_global[$key . '_type'] = $mx_user->lang('Auth_Administrators');
+				break;
 
 				default:
-					$this->auth_global[$key] = 0;
-					break;
+					$auth_global[$key] = 0;
+				break;
 			}
 		}
+		$this->auth_global = $auth_global;
 	}
 
 	/**
@@ -227,7 +269,7 @@ class mx_pafiledb_auth
 
 					case AUTH_ADMIN:
 						$result = $result || $is_admin;
-						break;
+					break;
 				}
 
 				$auth_user = $auth_user || $result;
@@ -267,7 +309,7 @@ class mx_pafiledb_auth
 
 				case AUTH_ADMIN:
 					$result = $result || $is_admin;
-					break;
+				break;
 			}
 
 			$auth_user = $auth_user || $result;
@@ -285,20 +327,33 @@ class mx_pafiledb_auth
 	 *
 	 * @return unknown
 	 */
-	function is_moderator()
+	function is_moderator($group_id = 0)
 	{
-		if ( !empty( $this->auth_user ) )
+		if (!empty($this->auth_user) && ($group_id == 0))
 		{
-			foreach( $this->auth_user as $cat_id => $auth_fields )
+			foreach( $this->auth_user as $cat_id => $this->auth_fields )
 			{
-				if ( $auth_fileds['auth_mod'] )
+				if ( $this->auth_fileds['auth_mod'] )
 				{
 					return true;
 				}
 			}
 			return false;
 		}
-		return false;
+		elseif ($group_id !== 0)
+		{		
+			$sql = "SELECT *
+				FROM " . PA_AUTH_ACCESS_TABLE . "
+				WHERE group_id = $group_id
+				AND auth_mod = '1'";
+
+			if ( !($result = $this->db->sql_query($sql)) )
+			{
+				$this->functions->message_die(GENERAL_ERROR, "Couldn't check for moderator $sql", "", __LINE__, __FILE__, $sql);
+			}
+			return ($is_mod = ($this->db->sql_fetchrow($result)) ? 1 : 0);			
+		}
+		return false;		
 	}
 }
 ?>

@@ -253,7 +253,7 @@ class pafiledb_admin extends pafiledb_public
 		return $auth_user;
 	}
 
-	function is_moderator( $group_id )
+	function is_moderator($group_id = 0)
 	{
 		static $is_mod = false;
 

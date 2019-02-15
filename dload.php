@@ -94,27 +94,28 @@ if ( !defined('PORTAL_BACKEND') && @file_exists( './viewtopic.' . $phpEx ) ) // 
 		die('Copy this file in phpbb_root_path were is your viewtopic.php file!!!');
 	}
 }
-else
+else // --------------------------------------------------------------------------------- MX-Publisher Module MODE
 {
 	define( 'MXBB_MODULE', true );
 
+	
 	if ( !function_exists( 'read_block_config' ) )
 	{
-		if( isset($_REQUEST['action']) && $_REQUEST['action'] == 'download' )
-		{
-		   define('MX_GZIP_DISABLED', true);
-		}
-
 		define( 'IN_PORTAL', true );
 		$mx_root_path = '../../';
 		$phpEx = substr(strrchr(__FILE__, '.'), 1);
 		include_once( $mx_root_path . 'common.' . $phpEx );
-
+		
+		if( $mx_request_vars->is_request('action') && ($mx_request_vars->request('action', MX_TYPE_NO_TAGS, '') == 'download') )
+		{
+		   define('MX_GZIP_DISABLED', true);
+		}
+		
 		// Start session management
 		$mx_user->init($user_ip, PAGE_INDEX);
 		// End session management
 
-		$block_id = ( !empty( $_GET['block_id'] ) ) ? $_GET['block_id'] : $_POST['id'];
+		$block_id = ( $mx_request_vars->is_set('block_id') ) ? $mx_request_vars->request('block_id', MX_TYPE_INT, 0) : $mx_request_vars->request('id', MX_TYPE_INT, 0);
 		if ( empty( $block_id ) )
 		{
 			$sql = "SELECT * FROM " . BLOCK_TABLE . "  WHERE block_title = 'PafileDB' LIMIT 1";
@@ -137,8 +138,12 @@ else
 		// Read Block Settings (default mode)
 		//
 		$title = $mx_block->block_info['block_title'];
+		$desc = $mx_block->block_info['block_desc'];
 		$block_size = ( isset( $block_size ) && !empty( $block_size ) ? $block_size : '100%' );
 
+		//
+		// Extract 'what posts to view info', the cool Array ;)
+		//
 		//Check for cash mod
 		if (file_exists($phpbb_root_path . 'includes/functions_cash.'.$phpEx))
 		{
@@ -182,10 +187,10 @@ switch (PORTAL_BACKEND)
 	case 'internal':
 	case 'phpbb2':
 		$is_admin = ( ( $userdata['user_level'] == ADMIN  ) && $userdata['session_logged_in'] ) ? true : 0;
-		break;
+	break;
 	case 'phpbb3':
 		$is_admin = ( $userdata['user_type'] == USER_FOUNDER ) ? true : 0;
-		break;
+	break;
 }
 
 // ===================================================
@@ -195,6 +200,26 @@ if (!($pafiledb_config['enable_module'] || $mx_user->is_admin))
 {
 	//mx_message_die( GENERAL_MESSAGE, $lang['pafiledb_disable'] );
 }
+
+/*
+* expected actions
+/* * /
+@define( 'download', 'download' );
+@define( 'category', 'category' );
+@define( 'file', 'file' );
+@define( 'viewall', 'viewall' );
+@define( 'search', 'search' );
+@define( 'license', 'license' );
+@define( 'rate', 'rate');
+@define( 'email', 'email');
+@define( 'stats', 'stats');
+@define( 'toplist', 'toplist',
+@define( 'user_upload', 'user_upload');
+@define( 'post_comment', 'post_comment');
+@define( 'mcp', 'mcp');
+@define( 'ucp', 'ucp');
+@define( 'main', 'main' );
+*/
 
 // ===================================================
 // an array of all expected actions
@@ -219,8 +244,10 @@ $actions = array(
 // ===================================================
 // Lets Build the page
 // ===================================================
-$page_title = $lang['Download'];
-
+$page_title = $mx_user->lang('Download');
+//
+// load module header
+//
 if ( $action != 'download' )
 {
 	if ( !$is_block )
@@ -232,6 +259,9 @@ if ( $action != 'download' )
 $pafiledb->module( $actions[$action] );
 $pafiledb->modules[$actions[$action]]->main( $action );
 
+//
+// load module footer
+//
 if ( $action != 'download' )
 {
 	if ( !$is_block )
@@ -239,4 +269,5 @@ if ( $action != 'download' )
 		include( $mx_root_path . 'includes/page_tail.' . $phpEx );
 	}
 }
+
 ?>
