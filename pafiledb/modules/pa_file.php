@@ -1,53 +1,48 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pa_file.php,v 1.15 2005/12/08 15:15:13 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
-/*
-  paFileDB 3.0
-  ©2001/2002 PHP Arena
-  Written by Todd
-  todd@phparena.net
-  http://www.phparena.net
-  Keep all copyright links on the script visible
-  Please read the license included with this script for more information.
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pa_file.php,v 1.29 2009/12/02 03:49:01 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
 */
 
+if ( !defined( 'IN_PORTAL' ) )
+{
+	die( "Hacking attempt" );
+}
+
+/**
+ * Enter description here...
+ *
+ */
 class pafiledb_file extends pafiledb_public
 {
-	function main( $action )
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $action
+	 */
+	function main( $action  = false )
 	{
-		global $pafiledb_template, $lang, $board_config, $phpEx, $pafiledb_config, $db, $images;
-		global $phpbb_root_path, $userdata, $db, $pafiledb_functions; 
-		global $mx_root_path, $module_root_path, $is_block, $phpEx, $mx_request_vars;
+		global $template, $lang, $board_config, $phpEx, $pafiledb_config, $images;
+		global $phpbb_root_path, $userdata, $db, $pafiledb_functions, $mx_user;
+		global $mx_root_path, $module_root_path, $is_block, $mx_request_vars;
 
 		// =======================================================
 		// Request vars
 		// =======================================================
+		$start = $mx_request_vars->get('start', MX_TYPE_INT, 0);
 		$file_id = $mx_request_vars->request('file_id', MX_TYPE_INT, '');
-				
+		$page_num = $mx_request_vars->request('page_num', MX_TYPE_INT, 1) - 1;
+
 		if ( empty( $file_id ) )
 		{
 			mx_message_die( GENERAL_MESSAGE, $lang['File_not_exist'] );
 		}
-				
+
 		// =======================================================
-		// file id is not set, give him/her a nice error message
 		// =======================================================
 		switch ( SQL_LAYER )
 		{
@@ -66,7 +61,7 @@ class pafiledb_file extends pafiledb_public
 			default:
 				$sql = "SELECT f.*, AVG(r.rate_point) AS rating, COUNT(r.votes_file) AS total_votes, u.user_id, u.username, COUNT(c.comments_id) as total_comments, cat.cat_allow_ratings, cat.cat_allow_comments
 					FROM " . PA_FILES_TABLE . " AS f
-						LEFT JOIN " . PA_VOTES_TABLE . " AS r ON f.file_id = r.votes_file 
+						LEFT JOIN " . PA_VOTES_TABLE . " AS r ON f.file_id = r.votes_file
 						LEFT JOIN " . USERS_TABLE . " AS u ON f.user_id = u.user_id
 						LEFT JOIN " . PA_COMMENTS_TABLE . " AS c ON f.file_id = c.file_id
 						LEFT JOIN " . PA_CATEGORY_TABLE . " AS cat ON f.file_catid = cat.cat_id
@@ -79,8 +74,8 @@ class pafiledb_file extends pafiledb_public
 		if ( !( $result = $db->sql_query( $sql ) ) )
 		{
 			mx_message_die( GENERAL_ERROR, 'Couldnt Query file info', '', __LINE__, __FILE__, $sql );
-		} 
-		
+		}
+
 		// ===================================================
 		// file doesn't exist'
 		// ===================================================
@@ -88,51 +83,74 @@ class pafiledb_file extends pafiledb_public
 		{
 			mx_message_die( GENERAL_MESSAGE, $lang['File_not_exist'] );
 		}
-		$db->sql_freeresult( $result ); 
-		
+		$db->sql_freeresult( $result );
+
 		// ===================================================
 		// Pafiledb auth for viewing file
 		// ===================================================
-		if ( ( !$this->auth[$file_data['file_catid']]['auth_view_file'] ) )
+		if ( ( !$this->auth_user[$file_data['file_catid']]['auth_view_file'] ) )
 		{
 			/*
 			if ( !$userdata['session_logged_in'] )
 			{
-				mx_redirect(append_sid($mx_root_path . "login.$phpEx?redirect=".pa_this_mxurl("action=file&file_id=" . $file_id), true));
+				mx_redirect(mx_append_sid($mx_root_path . "login.$phpEx?redirect=".$this->this_mxurl("action=file&file_id=" . $file_id), true));
 			}
 			*/
-			$message = sprintf( $lang['Sorry_auth_view'], $this->auth[$file_data['file_catid']]['auth_view_file_type'] );
+			$message = sprintf( $lang['Sorry_auth_view'], $this->auth_user[$file_data['file_catid']]['auth_view_file_type'] );
 			mx_message_die( GENERAL_MESSAGE, $message );
 		}
 
-		$pafiledb_template->assign_vars( array( 
-				'L_INDEX' => "<<",
+		$template->assign_vars( array(
+			'L_INDEX' => "<<",
 
-				'U_INDEX' => append_sid( $mx_root_path . 'index.' . $phpEx ),
-				'U_DOWNLOAD_HOME' => append_sid( pa_this_mxurl() ),
+			'U_INDEX' => mx_append_sid( $mx_root_path . 'index.' . $phpEx ),
+			'U_DOWNLOAD_HOME' => mx_append_sid( $this->this_mxurl() ),
 
-				'FILE_NAME' => $file_data['file_name'],
-				'DOWNLOAD' => $pafiledb_config['module_name'] ) 
-			);
-			 
+			'FILE_NAME' => $file_data['file_name'],
+			'DOWNLOAD' => $pafiledb_config['module_name']
+		));
+
 		// ===================================================
 		// Prepare file info to display them
 		// ===================================================
-		$file_time = create_date( $board_config['default_dateformat'], $file_data['file_time'], $board_config['board_timezone'] );
-		$file_last_download = ( $file_data['file_last'] ) ? create_date( $board_config['default_dateformat'], $file_data['file_last'], $board_config['board_timezone'] ) : $lang['never'];
-		$file_update_time = ( $file_data['file_update_time'] ) ? create_date( $board_config['default_dateformat'], $file_data['file_update_time'], $board_config['board_timezone'] ) : $lang['never'];
+		$file_time = phpBB2::create_date( $board_config['default_dateformat'], $file_data['file_time'], $board_config['board_timezone'] );
+		$file_last_download = ( $file_data['file_last'] ) ? phpBB2::create_date( $board_config['default_dateformat'], $file_data['file_last'], $board_config['board_timezone'] ) : $lang['never'];
+		$file_update_time = ( $file_data['file_update_time'] ) ? phpBB2::create_date( $board_config['default_dateformat'], $file_data['file_update_time'], $board_config['board_timezone'] ) : $lang['never'];
 		$file_author = trim( $file_data['file_creator'] );
 		$file_version = trim( $file_data['file_version'] );
 		$file_screenshot_url = trim( $file_data['file_ssurl'] );
 		$file_website_url = trim( $file_data['file_docsurl'] );
-		$file_download_link = ( $file_data['file_license'] > 0 ) ? append_sid( pa_this_mxurl( 'action=license&license_id=' . $file_data['file_license'] . '&file_id=' . $file_id ) ) : append_sid( pa_this_mxurl( 'action=download&file_id=' . $file_id, 1 ) );
+		$file_download_link = ( $file_data['file_license'] > 0 ) ? mx_append_sid( $this->this_mxurl( 'action=license&license_id=' . $file_data['file_license'] . '&file_id=' . $file_id ) ) : mx_append_sid( $this->this_mxurl( 'action=download&file_id=' . $file_id, 1 ) );
 		$file_size = $pafiledb_functions->get_file_size( $file_id, $file_data );
 
-		$file_poster = ( $file_data['user_id'] != ANONYMOUS ) ? '<a href="' . append_sid( $phpbb_root_path . 'profile.' . $phpEx . '?mode=viewprofile&amp;' . POST_USERS_URL . '=' . $file_data['user_id'] ) . '">' : '';
+		$file_poster = ( $file_data['user_id'] != ANONYMOUS ) ? '<a href="' . mx_append_sid( $phpbb_root_path . 'profile.' . $phpEx . '?mode=viewprofile&amp;' . POST_USERS_URL . '=' . $file_data['user_id'] ) . '">' : '';
 		$file_poster .= ( $file_data['user_id'] != ANONYMOUS ) ? $file_data['username'] : $lang['Guest'];
 		$file_poster .= ( $file_data['user_id'] != ANONYMOUS ) ? '</a>' : '';
+
+		if ( !MXBB_MODULE )
+		{
+			$server_protocol = ($board_config['cookie_secure']) ? 'https://' : 'http://';
+			$server_name = preg_replace('#^\/?(.*?)\/?$#', '\1', trim($board_config['server_name']));
+			$server_port = ($board_config['server_port'] <> 80) ? ':' . trim($board_config['server_port']) : '';
+			$script_name = preg_replace('#^\/?(.*?)\/?$#', '\1', trim($board_config['script_path']));
+			$false_phpbb_url = $server_protocol . $server_name . $server_port . '/';
+			$false_phpbb_path = './';
+			$file_screenshot_url = str_replace($false_phpbb_url . $false_phpbb_path, PORTAL_URL, $file_screenshot_url);
+		}
+
+		//
+		// Disabled file
+		//
+		if ($file_data['file_disable'])
+		{
+			$file_download_link = 'javascript:disable_popup()';
+		}
 		
-		$pafiledb_template->assign_vars( array( 
+		//overwrite some phpBB3 vars
+		$images['pa_icon_delpost'] = $mx_user->img('icon_post_delete', 'DELETE_POST', false, '', 'src');
+		$images['pa_icon_edit'] = $mx_user->img('icon_post_edit', 'EDIT_POST', false, '', 'src');
+
+		$template->assign_vars( array(
 			'L_CLICK_HERE' => $lang['Click_here'],
 			'L_AUTHOR' => $lang['Creator'],
 			'L_VERSION' => $lang['Version'],
@@ -163,16 +181,18 @@ class pafiledb_file extends pafiledb_public
 			'FILE_VERSION' => $file_version,
 			'FILE_SCREENSHOT' => $file_screenshot_url,
 			'FILE_WEBSITE' => $file_website_url,
+			'FILE_DISABLE_MSG' => nl2br( $file_data['disable_msg'] ),
 
-			'AUTH_EDIT' => ( ( $this->auth[$file_data['file_catid']]['auth_edit_file'] && $file_data['user_id'] == $userdata['user_id'] ) || $this->auth[$file_data['file_catid']]['auth_mod'] ) ? true : false,
-			'AUTH_DELETE' => ( ( $this->auth[$file_data['file_catid']]['auth_delete_file'] && $file_data['user_id'] == $userdata['user_id'] ) || $this->auth[$file_data['file_catid']]['auth_mod'] ) ? true : false,
-			'AUTH_DOWNLOAD' => ( $this->auth[$file_data['file_catid']]['auth_download'] ) ? true : false,
-			'AUTH_EMAIL' => ( $this->auth[$file_data['file_catid']]['auth_email'] ) ? true : false,
-				
-			'DELETE_IMG' => $phpbb_root_path . $images['icon_delpost'],
-			'EDIT_IMG' => $phpbb_root_path . $images['icon_edit'],
+			'AUTH_EDIT' => ( ( $this->auth_user[$file_data['file_catid']]['auth_edit_file'] && $file_data['user_id'] == $userdata['user_id'] ) || $this->auth_user[$file_data['file_catid']]['auth_mod'] ) ? true : false,
+			'AUTH_DELETE' => ( ( $this->auth_user[$file_data['file_catid']]['auth_delete_file'] && $file_data['user_id'] == $userdata['user_id'] ) || $this->auth_user[$file_data['file_catid']]['auth_mod'] ) ? true : false,
+			'AUTH_DOWNLOAD' => ( $this->auth_user[$file_data['file_catid']]['auth_download'] ) ? true : false,
+			'AUTH_EMAIL' => ( $this->auth_user[$file_data['file_catid']]['auth_email'] ) ? true : false,
+
+			'DELETE_IMG' => $images['pa_icon_delpost'],
+			'EDIT_IMG' => $images['pa_icon_edit'],
 			'DOWNLOAD_IMG' => $images['pa_download'],
 			'EMAIL_IMG' => $images['pa_email'],
+
 			'TIME' => $file_time,
 			'UPDATE_TIME' => ( $file_data['file_update_time'] != $file_data['file_time'] ) ? $file_update_time : $lang['never'],
 			'FILE_DLS' => intval( $file_data['file_dls'] ),
@@ -180,13 +200,17 @@ class pafiledb_file extends pafiledb_public
 			'LAST' => $file_last_download,
 
 			'U_DOWNLOAD' => $file_download_link,
-			'U_DELETE' => append_sid( pa_this_mxurl( 'action=user_upload&do=delete&file_id=' . $file_id ) ),
-			'U_EDIT' => append_sid( pa_this_mxurl( 'action=user_upload&file_id=' . $file_id ) ),
+			'U_DELETE' => mx_append_sid( $this->this_mxurl( 'action=user_upload&do=delete&file_id=' . $file_id ) ),
+			'U_EDIT' => mx_append_sid( $this->this_mxurl( 'action=user_upload&file_id=' . $file_id ) ),
+			'U_EMAIL' => mx_append_sid( $this->this_mxurl( 'action=email&file_id=' . $file_id ) ),
 
-			'U_EMAIL' => append_sid( pa_this_mxurl( 'action=email&file_id=' . $file_id ) ) ) 
-		);
+			// Buttons
+			'B_DOWNLOAD_IMG' => $mx_user->create_button('pa_download', $lang['Downloadfile'], $file_download_link),
+			'B_DELETE_IMG' => $mx_user->create_button('pa_icon_delpost', $lang['Deletefile'], "javascript:delete_item('". mx_append_sid( $this->this_mxurl( 'action=user_upload&do=delete&file_id=' . $file_id )) . "')"),
+			'B_EDIT_IMG' => $mx_user->create_button('pa_icon_edit', $lang['Editfile'], mx_append_sid( $this->this_mxurl( 'action=user_upload&file_id=' . $file_id ) )),
+			'B_EMAIL_IMG' => $mx_user->create_button('pa_email', $lang['Emailfile'], mx_append_sid( $this->this_mxurl( 'action=email&file_id=' . $file_id ))),
+		));
 
-		include( $module_root_path . 'pafiledb/includes/functions_field.' . $phpEx );
 		$custom_field = new custom_field();
 		$custom_field->init();
 		$custom_field->display_data( $file_id );
@@ -196,44 +220,48 @@ class pafiledb_file extends pafiledb_public
 		//
 		if ( $this->ratings[$file_data['file_catid']]['activated'] )
 		{
-			$file_rating = ( $file_data['rating'] != 0 ) ? round( $file_data['rating'], 2 ) . ' / 10' : $lang['Not_rated'];
-			
-			if ( $this->auth[$file_data['file_catid']]['auth_rate'] )
+			$file_rating = ( $file_data['rating'] != 0 ) ? round( $file_data['rating'], 2 ) . '/10' : $lang['Not_rated'];
+
+			if ( $this->auth_user[$file_data['file_catid']]['auth_rate'] )
 			{
 				$rate_img = $images['pa_rate'];
 			}
-			
-			$pafiledb_template->assign_block_vars( 'use_ratings', array(
+
+			$template->assign_block_vars( 'use_ratings', array(
 				'L_RATING' => $lang['DlRating'],
 				'L_RATE' => $lang['Rate'],
 				'L_VOTES' => $lang['Votes'],
 				'FILE_VOTES' => $file_data['total_votes'],
 				'RATING' => $file_rating,
-				
+
 				//
 				// Allowed to rate
 				//
 				'RATE_IMG' => $rate_img,
-				'U_RATE' => append_sid( pa_this_mxurl( 'action=rate&file_id=' . $file_id ) ),
+				'U_RATE' => mx_append_sid( $this->this_mxurl( 'action=rate&file_id=' . $file_id ) ),
+
+				// Buttons
+				'B_RATE_IMG' => $mx_user->create_button('pa_rate', $lang['Rate'], mx_append_sid( $this->this_mxurl( 'action=rate&file_id=' . $file_id ) )),
+
 			));
 		}
 
 		//
 		// Comments
-		//	
-		if ( $this->comments[$file_data['file_catid']]['activated'] && $this->auth[$file_data['file_catid']]['auth_view_comment'])
+		//
+		if ( $this->comments[$file_data['file_catid']]['activated'] && $this->auth_user[$file_data['file_catid']]['auth_view_comment'])
 		{
 			$comments_type = $this->comments[$file_data['file_catid']]['internal_comments'] ? 'internal' : 'phpbb';
-			
+
 			//
 			// Instatiate comments
-			//			
-			include( $module_root_path . 'pafiledb/includes/functions_comment.' . $phpEx );
+			//
+			include_once( $module_root_path . 'pafiledb/includes/functions_comment.' . $phpEx );
 			$pafiledb_comments = new pafiledb_comments();
 			$pafiledb_comments->init( $file_data, $comments_type );
 			$pafiledb_comments->display_comments();
 		}
-		
+
 		// ===================================================
 		// assign var for navigation
 		// ===================================================
@@ -243,12 +271,11 @@ class pafiledb_file extends pafiledb_public
 		// User authorisation levels output
 		//
 		$this->auth_can($file_data['file_catid']);
-				
+
 		//
 		// Output all
 		//
 		$this->display( $lang['Download'], 'pa_file_body.tpl' );
 	}
 }
-
 ?>

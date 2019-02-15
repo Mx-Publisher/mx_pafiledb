@@ -1,46 +1,40 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pa_stats.php,v 1.15 2005/12/11 16:19:20 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
-/*
-  paFileDB 3.0
-  ©2001/2002 PHP Arena
-  Written by Todd
-  todd@phparena.net
-  http://www.phparena.net
-  Keep all copyright links on the script visible
-  Please read the license included with this script for more information.
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pa_stats.php,v 1.28 2011/12/29 05:51:52 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
 */
 
+if ( !defined( 'IN_PORTAL' ) )
+{
+	die( "Hacking attempt" );
+}
+
+/**
+ * Enter description here...
+ *
+ */
 class pafiledb_stats extends pafiledb_public
 {
-	function main( $action )
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $action
+	 */
+	function main( $action  = false )
 	{
-		global $pafiledb_template, $lang, $board_config, $phpEx, $pafiledb_config, $db, $db, $images;
-		global $_REQUEST, $phpbb_root_path, $userdata; 
-		global $mx_root_path, $module_root_path, $is_block, $phpEx;
+		global $template, $lang, $board_config, $phpEx, $pafiledb_config, $db, $images;
+		global $phpbb_root_path, $userdata;
+		global $mx_root_path, $module_root_path, $is_block;
 
 		if ( !$this->auth_global['auth_stats'] )
 		{
 			if ( !$userdata['session_logged_in'] )
 			{
-				// mx_redirect(append_sid($mx_root_path . "login.$phpEx?redirect=".pa_this_mxurl("action=stats"), true));
+				// mx_redirect(mx_append_sid($mx_root_path . "login.$phpEx?redirect=".$this->this_mxurl("action=stats"), true));
 			}
 
 			$message = sprintf( $lang['Sorry_auth_stats'], $this->auth_global['auth_stats_type'] );
@@ -49,7 +43,7 @@ class pafiledb_stats extends pafiledb_public
 
 		$num['cats'] = $this->total_cat;
 
-		$sql = "SELECT file_id 
+		$sql = "SELECT file_id
 			FROM " . PA_FILES_TABLE . "
 			WHERE file_approved = '1'";
 
@@ -61,9 +55,9 @@ class pafiledb_stats extends pafiledb_public
 		$num['files'] = $db->sql_numrows( $result );
 		$db->sql_freeresult( $result );
 
-		$sql = 'SELECT file_id, file_name 
+		$sql = 'SELECT file_id, file_name
 			FROM ' . PA_FILES_TABLE . "
-			WHERE file_approved = '1' 
+			WHERE file_approved = '1'
 			ORDER BY file_time DESC";
 
 		if ( !( $result = $db->sql_query( $sql ) ) )
@@ -74,9 +68,9 @@ class pafiledb_stats extends pafiledb_public
 		$newest = $db->sql_fetchrow( $result );
 		$db->sql_freeresult( $result );
 
-		$sql = 'SELECT file_id, file_name 
-			FROM ' . PA_FILES_TABLE . " 
-			WHERE file_approved = '1' 
+		$sql = 'SELECT file_id, file_name
+			FROM ' . PA_FILES_TABLE . "
+			WHERE file_approved = '1'
 			ORDER BY file_time ASC";
 
 		if ( !( $result = $db->sql_query( $sql ) ) )
@@ -90,8 +84,8 @@ class pafiledb_stats extends pafiledb_public
 		$sql = "SELECT r.votes_file, AVG(r.rate_point) AS rating, f.file_id, f.file_name
 			FROM " . PA_VOTES_TABLE . " AS r, " . PA_FILES_TABLE . " AS f
 			WHERE r.votes_file = f.file_id
-			AND f.file_approved = '1' 
-			GROUP BY f.file_id 
+			AND f.file_approved = '1'
+			GROUP BY f.file_id
 			ORDER BY rating DESC";
 
 		if ( !( $result = $db->sql_query( $sql ) ) )
@@ -104,8 +98,8 @@ class pafiledb_stats extends pafiledb_public
 		$sql = "SELECT r.votes_file, AVG(r.rate_point) AS rating, f.file_id, f.file_name
 			FROM " . PA_VOTES_TABLE . " AS r, " . PA_FILES_TABLE . " AS f
 			WHERE r.votes_file = f.file_id
-			AND f.file_approved = '1' 
-			GROUP BY f.file_id 
+			AND f.file_approved = '1'
+			GROUP BY f.file_id
 			ORDER BY rating ASC";
 
 		if ( !( $result = $db->sql_query( $sql ) ) )
@@ -122,8 +116,8 @@ class pafiledb_stats extends pafiledb_public
 			$total_votes++;
 		}
 		$db->sql_freeresult( $result );
-		$sql = "SELECT file_id, file_name, file_dls 
-			FROM " . PA_FILES_TABLE . " 
+		$sql = "SELECT file_id, file_name, file_dls
+			FROM " . PA_FILES_TABLE . "
 			WHERE file_approved = '1'
 			ORDER BY file_dls DESC";
 
@@ -135,9 +129,9 @@ class pafiledb_stats extends pafiledb_public
 		$mostdl = $db->sql_fetchrow( $result );
 		$db->sql_freeresult( $result );
 
-		$sql = "SELECT file_id, file_name, file_dls 
+		$sql = "SELECT file_id, file_name, file_dls
 			FROM " . PA_FILES_TABLE . "
-			WHERE file_approved = '1' 
+			WHERE file_approved = '1'
 			ORDER BY file_dls ASC";
 
 		if ( !( $result = $db->sql_query( $sql ) ) )
@@ -148,7 +142,7 @@ class pafiledb_stats extends pafiledb_public
 		$leastdl = $db->sql_fetchrow( $result );
 		$db->sql_freeresult( $result );
 
-		$sql = "SELECT file_dls 
+		$sql = "SELECT file_dls
 			FROM " . PA_FILES_TABLE . "
 			WHERE file_approved = '1'";
 
@@ -167,37 +161,66 @@ class pafiledb_stats extends pafiledb_public
 
 		$avgdls = @round( $totaldls / $num['files'] );
 
-		require( $module_root_path . 'language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx );
+		if ( !file_exists( $module_root_path . 'language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx ) )
+      	{
+           	require( $module_root_path . 'language/lang_english/lang_main.' . $phpEx );
+      	}
+      	else
+      	{
+           	require(  $module_root_path . 'language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx );
+      	}
 
 		$lang['Stats_text'] = str_replace( "{total_files}", $num['files'], $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{total_categories}", $num['cats'], $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{total_downloads}", $totaldls, $lang['Stats_text'] );
-		$lang['Stats_text'] = str_replace( "{u_newest_file}", append_sid( pa_this_mxurl( "action=file&file_id=" . $newest['file_id'] ) ), $lang['Stats_text'] );
+		$lang['Stats_text'] = str_replace( "{u_newest_file}", mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $newest['file_id'] ) ), $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{newest_file}", $newest['file_name'], $lang['Stats_text'] );
-		$lang['Stats_text'] = str_replace( "{u_oldest_file}", append_sid( pa_this_mxurl( "action=file&file_id=" . $oldest['file_id'] ) ), $lang['Stats_text'] );
+		$lang['Stats_text'] = str_replace( "{u_oldest_file}", mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $oldest['file_id'] ) ), $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{oldest_file}", $oldest['file_name'], $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{average}", $avg, $lang['Stats_text'] );
-		$lang['Stats_text'] = str_replace( "{u_popular}", append_sid( pa_this_mxurl( "action=file&file_id=" . $popular['file_id'] ) ), $lang['Stats_text'] );
+		$lang['Stats_text'] = str_replace( "{u_popular}", mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $popular['file_id'] ) ), $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{popular}", $popular['file_name'], $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{most}", round( $popular['rating'], 2 ), $lang['Stats_text'] );
-		$lang['Stats_text'] = str_replace( "{u_lpopular}", append_sid( pa_this_mxurl( "action=file&file_id=" . $lpopular['file_id'] ) ), $lang['Stats_text'] );
+		$lang['Stats_text'] = str_replace( "{u_lpopular}", mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $lpopular['file_id'] ) ), $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{lpopular}", $lpopular['file_name'], $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{least}", round( $lpopular['rating'], 2 ), $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{avg_dls}", $avgdls, $lang['Stats_text'] );
-		$lang['Stats_text'] = str_replace( "{u_most_dl}", append_sid( pa_this_mxurl( "action=file&file_id=" . $mostdl['file_id'] ) ), $lang['Stats_text'] );
+		$lang['Stats_text'] = str_replace( "{u_most_dl}", mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $mostdl['file_id'] ) ), $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{most_dl}", $mostdl['file_name'], $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{most_no}", $mostdl['file_dls'], $lang['Stats_text'] );
-		$lang['Stats_text'] = str_replace( "{u_least_dl}", append_sid( pa_this_mxurl( "action=file&file_id=" . $leastdl['file_id'] ) ), $lang['Stats_text'] );
+		$lang['Stats_text'] = str_replace( "{u_least_dl}", mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $leastdl['file_id'] ) ), $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{least_dl}", $leastdl['file_name'], $lang['Stats_text'] );
 		$lang['Stats_text'] = str_replace( "{least_no}", $leastdl['file_dls'], $lang['Stats_text'] );
+		
+		if (@file_exists($module_root_path . "pafiledb/images/os/"))
+		{
+			$osEx = ".png";
+			$osDir = "os/";
+		}
+		else
+		{
+			$osEx = ".gif";
+			$osDir = "stats/";			
+		}
 
-		$agent_lang = array( 'OPERA' => 'Opera', 'IE' => 'Internet Explorer', 'MOZILLA' => 'Mozilla', 'NETSCAPE' => 'NetScape', 'OTHER' => 'Other' );
-		$agent_image = array( 'OPERA' => 'opera.gif', 'IE' => 'explorer.gif', 'MOZILLA' => 'mozilla.gif', 'NETSCAPE' => 'netscape.gif', 'OTHER' => 'irix.gif' );
-		$agent_point = array( 'OPERA' => 0, 'IE' => 0, 'MOZILLA' => 0, 'NETSCAPE' => 0, 'OTHER' => 0 );
+		if (@file_exists($module_root_path . "pafiledb/images/browsers/"))
+		{
+			$agentEx = ".png";
+			$agentDir = "browsers/";
+		}
+		else
+		{
+			$agentEx = ".gif";
+			$agentDir = "stats/";			
+		}		
 
-		$os_lang = array( 'Win' => 'Windows', 'Mac' => 'Macintosh', 'Linux' => 'Linux', 'Unix' => 'Unix', 'Other' => 'Other' );
-		$os_image = array( 'Win' => 'windows.gif', 'Mac' => 'mac.gif', 'Linux' => 'linux.gif', 'Unix' => 'linux.gif', 'Other' => 'os2.gif' );
-		$os_point = array( 'Win' => 0, 'Mac' => 0, 'Linux' => 0, 'Unix' => 0, 'Other' => 0 );
+		$agent_lang = array('ANDROID' => 'Android', 'IPHONE' => 'iPhone', 'IPOD' => 'iPod', 'GOOGLE_CHROME' => 'Google Chrome', 'OPERA' => 'Opera', 'IE' => 'MS Explorer', 'THEWORLD' => 'TheWorld', 'MOZILLA' => 'Mozilla', 'NETSCAPE' => 'NetScape', 'LYNX' => 'Lynx', 'KONQUEROR' => 'Konqueror', 'SAFARI' => 'Safari', 'MAXTHON' => 'Maxthon', 'AOL' => 'AOL' , 'BOT' => 'Bot', 'OTHER' => 'Other', '' => 'Unknown', 'Oops!' => '?????');
+		$agent_image = array('ANDROID' => 'android'.$agentEx, 'IPHONE' => 'iphone'.$agentEx, 'IPOD' => 'ipod'.$agentEx, 'GOOGLE_CHROME' => 'chrome'.$agentEx, 'OPERA' => 'opera'.$agentEx, 'IE' => 'explorer'.$agentEx, 'THEWORLD' => 'theworld'.$agentEx, 'MOZILLA' => 'mozilla'.$agentEx, 'NETSCAPE' => 'netscape'.$agentEx, 'LYNX' => 'lynx'.$agentEx, 'KONQUEROR' => 'konqueror'.$agentEx, 'SAFARI' => 'safari'.$agentEx, 'MAXTHON' => 'maxthon'.$agentEx, 'AOL' => 'aol'.$agentEx, 'BOT' => 'bot'.$agentEx, 'OTHER' => 'altavista'.$agentEx, '' => 'unknown'.$agentEx, 'Oops!' => 'none'.$agentEx);
+		$agent_point = array('ANDROID' => 0, 'IPHONE' => 0, 'IPOD' => 0, 'OPERA' => 0, 'GOOGLE_CHROME' => 0, 'IE' => 0, 'THEWORLD' => 0, 'MOZILLA' => 0, 'NETSCAPE' => 0, 'LYNX' => 0, 'KONQUEROR' => 0, 'SAFARI' => 0, 'MAXTHON' => 0, 'AOL' => 0, 'BOT' => 0, 'OTHER' => 0, '' => 0, 'Oops!' => 0);
+
+		$os_lang = array('Android' => 'Android', 'Win' => 'Windows', 'Mac' => 'Macintosh', 'Linux' => 'Linux', 'Unix' => 'Unix', 'FreeBSD' => 'FreeBSD', 'BeOS' => 'BeOS', 'Ubuntu' => 'Ubuntu', 'Ubuntu' => 'Fedora', 'OS2' => 'OS2', 'IRIX' => 'Irix', 'SunOS' => 'SunOS', 'Aix' => 'Aix', 'PalmOS' => 'Palm OS', 'OTHER' => 'Other', '' => 'Unknown', 'Oops!' => '?????');
+		$os_image = array('Android' => 'android'.$osEx, 'Win' => 'windows'.$osEx, 'Mac' => 'mac'.$osEx, 'Linux' => 'linux'.$osEx, 'Unix' => 'unix'.$osEx, 'FreeBSD' => 'bsd'.$osEx, 'BeOS' => 'be'.$osEx, 'Ubuntu' => 'ubuntu'.$osEx, 'Fedora' => 'fedora'.$osEx, 'OS2' => 'os2'.$osEx, 'IRIX' => 'irix'.$osEx, 'SunOS' => 'sun'.$osEx, 'Aix' => 'aix'.$osEx, 'PalmOS' => 'palm'.$osEx, 'OTHER' => 'question'.$osEx, '' => 'unknown'.$osEx, 'Oops!' => 'none'.$osEx);
+		$os_point = array('Android' => 0, 'Win' => 0, 'Mac' => 0, 'Linux' => 0, 'Unix' => 0, 'FreeBSD' => 0, 'BeOS' => 0, 'Ubuntu' => 0, 'Fedora' => 0, 'OS2' => 0, 'IRIX' => 0, 'SunOS' => 0, 'Aix' => 0, 'PalmOS' => 0, 'OTHER' => 0, '' => 0, 'Oops!' => 0);
 
 		$sql = "SELECT downloader_os, downloader_browser
 			FROM " . PA_DOWNLOAD_INFO_TABLE;
@@ -217,53 +240,53 @@ class pafiledb_stats extends pafiledb_public
 		}
 
 		$os_graphic = 0;
-		$os_graphic_max = count( $images['voting_graphic'] );
+		$os_graphic_max = count( $images['pa_voting_graphic'] );
 
 		foreach( $os_point as $index => $point )
 		{
 			$temp_point = ( $point > 100 ) ? 100 : $point;
-			$os_graphic_img = $images['voting_graphic'][$os_graphic];
+			$os_graphic_img = $images['pa_voting_graphic'][$os_graphic];
 			$os_graphic = ( $os_graphic < $os_graphic_max - 1 ) ? $os_graphic + 1 : 0;
 
-			$pafiledb_template->assign_block_vars( "downloads_os", array( 'OS_IMG' => $module_root_path . "pafiledb/images/stats/" . $os_image[$index],
+			$template->assign_block_vars("downloads_os", array('OS_IMG' => $module_root_path . "pafiledb/images/" . $osDir . $os_image[$index],
 				'OS_NAME' => $os_lang[$index],
 				'OS_OPTION_RESULT' => $point,
-				'OS_OPTION_IMG' => $phpbb_root_path . $os_graphic_img,
-				'OS_OPTION_IMG_WIDTH' => $temp_point * 2 ) 
+				'OS_OPTION_IMG' =>  $os_graphic_img,
+				'OS_OPTION_IMG_WIDTH' => $temp_point * 2 )
 			);
 		}
 
 		$b_graphic = 0;
-		$b_graphic_max = count( $images['voting_graphic'] );
+		$b_graphic_max = count( $images['pa_voting_graphic'] );
 
 		foreach( $agent_point as $index => $point )
 		{
 			$temp_point = ( $point > 100 ) ? 100 : $point;
-			$b_graphic_img = $images['voting_graphic'][$b_graphic];
+			$b_graphic_img = $images['pa_voting_graphic'][$b_graphic];
 			$b_graphic = ( $b_graphic < $b_graphic_max - 1 ) ? $b_graphic + 1 : 0;
 
-			$pafiledb_template->assign_block_vars( "downloads_b", array( 
-				'B_IMG' => $module_root_path . "pafiledb/images/stats/" . $agent_image[$index],
+			$template->assign_block_vars( "downloads_b", array(
+				'B_IMG' => $module_root_path . "pafiledb/images/" . $agentDir . $agent_image[$index],
 				'B_NAME' => $agent_lang[$index],
 				'B_OPTION_RESULT' => $point,
-				'B_OPTION_IMG' => $phpbb_root_path . $b_graphic_img,
-				'B_OPTION_IMG_WIDTH' => $temp_point * 2 ) 
+				'B_OPTION_IMG' => $b_graphic_img,
+				'B_OPTION_IMG_WIDTH' => $temp_point * 2 )
 			);
 		}
-
-		$agent_point = array( 'OPERA' => 0, 'IE' => 0, 'MOZILLA' => 0, 'NETSCAPE' => 0, 'OTHER' => 0 );
-		$os_point = array( 'Win' => 0, 'Mac' => 0, 'Linux' => 0, 'Unix' => 0, 'Other' => 0 );
-
+		
+		$agent_point = array('ANDROID' => 0, 'IPHONE' => 0, 'IPOD' => 0, 'OPERA' => 0, 'GOOGLE_CHROME' => 0, 'IE' => 0, 'THEWORLD' => 0, 'MOZILLA' => 0, 'NETSCAPE' => 0, 'LYNX' => 0, 'KONQUEROR' => 0, 'SAFARI' => 0, 'MAXTHON' => 0, 'AOL' => 0, 'BOT' => 0, 'OTHER' => 0, '' => 0, 'Oops!' => 0);
+		$os_point = array('Android' => 0, 'Win' => 0, 'Mac' => 0, 'Linux' => 0, 'Unix' => 0, 'FreeBSD' => 0, 'BeOS' => 0, 'Ubuntu' => 0, 'Fedora' => 0, 'OS2' => 0, 'IRIX' => 0, 'SunOS' => 0, 'Aix' => 0, 'PalmOS' => 0, 'OTHER' => 0, '' => 0, 'Oops!' => 0);
+		
 		$sql = "SELECT voter_os, voter_browser
 			FROM " . PA_VOTES_TABLE;
-
-		if ( !( $result = $db->sql_query( $sql ) ) )
+			
+		if (!($result = $db->sql_query($sql)))
 		{
-			mx_message_die( GENERAL_ERROR, 'Could not obtain downloads info', '', __LINE__, __FILE__, $sql );
+			mx_message_die(GENERAL_ERROR, 'Could not obtain downloads info', '', __LINE__, __FILE__, $sql);
 		}
 
-		$row_ratings = $db->sql_fetchrowset( $result );
-		$db->sql_freeresult( $result );
+		$row_ratings = $db->sql_fetchrowset($result);
+		$db->sql_freeresult($result);
 
 		for( $i = 0; $i < count( $row_ratings ); $i++ )
 		{
@@ -272,43 +295,43 @@ class pafiledb_stats extends pafiledb_public
 		}
 
 		$os_graphic = 0;
-		$os_graphic_max = count( $images['voting_graphic'] );
+		$os_graphic_max = count( $images['pa_voting_graphic'] );
 
 		foreach( $os_point as $index => $point )
 		{
 			$temp_point = ( $point > 100 ) ? 100 : $point;
-			$os_graphic_img = $images['voting_graphic'][$os_graphic];
+			$os_graphic_img = $images['pa_voting_graphic'][$os_graphic];
 			$os_graphic = ( $os_graphic < $os_graphic_max - 1 ) ? $os_graphic + 1 : 0;
 
-			$pafiledb_template->assign_block_vars( "rating_os", array( 
-				'OS_IMG' => $module_root_path . "pafiledb/images/stats/" . $os_image[$index],
+			$template->assign_block_vars( "rating_os", array(
+				'OS_IMG' => $module_root_path . "pafiledb/images/" . $osDir . $os_image[$index],
 				'OS_NAME' => $os_lang[$index],
 				'OS_OPTION_RESULT' => $point,
-				'OS_OPTION_IMG' => $phpbb_root_path . $os_graphic_img,
-				'OS_OPTION_IMG_WIDTH' => $temp_point ) 
+				'OS_OPTION_IMG' => $os_graphic_img,
+				'OS_OPTION_IMG_WIDTH' => $temp_point )
 			);
 		}
 
 		$b_graphic = 0;
-		$b_graphic_max = count( $images['voting_graphic'] );
+		$b_graphic_max = count( $images['pa_voting_graphic'] );
 
 		foreach( $agent_point as $index => $point )
 		{
 			$temp_point = ( $point > 100 ) ? 100 : $point;
-			$b_graphic_img = $images['voting_graphic'][$b_graphic];
+			$b_graphic_img = $images['pa_voting_graphic'][$b_graphic];
 			$b_graphic = ( $b_graphic < $b_graphic_max - 1 ) ? $b_graphic + 1 : 0;
 
-			$pafiledb_template->assign_block_vars( "rating_b", array( 
-				'B_IMG' => $module_root_path . "pafiledb/images/stats/" . $agent_image[$index],
+			$template->assign_block_vars( "rating_b", array(
+				'B_IMG' => $module_root_path . "pafiledb/images/" . $agentDir. $agent_image[$index],
 				'B_NAME' => $agent_lang[$index],
 				'B_OPTION_RESULT' => $point,
-				'B_OPTION_IMG' => $phpbb_root_path . $b_graphic_img,
-				'B_OPTION_IMG_WIDTH' => $temp_point ) 
+				'B_OPTION_IMG' => $b_graphic_img,
+				'B_OPTION_IMG_WIDTH' => $temp_point )
 			);
 		}
 
-		$pafiledb_template->assign_vars( array( 
-			'S_ACTION_CHART' => append_sid( pa_this_mxurl( 'action=stats' ) ),
+		$template->assign_vars( array(
+			'S_ACTION_CHART' => mx_append_sid( $this->this_mxurl( 'action=stats' ) ),
 			'L_STATISTICS' => $lang['Statistics'],
 
 			'L_INDEX' => "<<",
@@ -318,22 +341,21 @@ class pafiledb_stats extends pafiledb_public
 			'L_OS' => $lang['Os'],
 			'L_BROWSERS' => $lang['Browsers'],
 
-			'U_INDEX' => append_sid( $mx_root_path . 'index.' . $phpEx ),
-			'U_DOWNLOAD' => append_sid( pa_this_mxurl() ),
+			'U_INDEX' => mx_append_sid( $mx_root_path . 'index.' . $phpEx ),
+			'U_DOWNLOAD' => mx_append_sid( $this->this_mxurl() ),
 
-			'U_VOTE_LCAP' => $phpbb_root_path . "templates/subSilver/images/vote_lcap.gif",
-			'U_VOTE_RCAP' => $phpbb_root_path . "templates/subSilver/images/vote_rcap.gif",
+			'U_VOTE_LCAP' => $images['mx_vote_lcap'],
+			'U_VOTE_RCAP' => $images['mx_vote_rcap'],
 
 			'DOWNLOAD' => $pafiledb_config['module_name'],
-			'STATS_TEXT' => $lang['Stats_text'] ) 
+			'STATS_TEXT' => $lang['Stats_text'] )
 		);
 
 		// ===================================================
 		// assign var for navigation
 		// ===================================================
-		
+
 		$this->display( $lang['Download'], 'pa_stats_body.tpl' );
 	}
 }
-
 ?>

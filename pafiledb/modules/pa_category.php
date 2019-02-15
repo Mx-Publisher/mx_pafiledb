@@ -1,51 +1,48 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pa_category.php,v 1.11 2005/12/08 15:15:13 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
-/*
-  paFileDB 3.0
-  ©2001/2002 PHP Arena
-  Written by Todd
-  todd@phparena.net
-  http://www.phparena.net
-  Keep all copyright links on the script visible
-  Please read the license included with this script for more information.
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pa_category.php,v 1.23 2008/09/21 14:25:28 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
 */
 
+if ( !defined( 'IN_PORTAL' ) )
+{
+	die( "Hacking attempt" );
+}
+
+/**
+ * Enter description here...
+ *
+ */
 class pafiledb_category extends pafiledb_public
 {
-	function main( $action )
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $action
+	 */
+	function main( $action  = false )
 	{
-		global $pafiledb_template, $lang, $phpEx, $pafiledb_config, $_REQUEST, $userdata; 
-		global $mx_root_path, $module_root_path, $is_block, $phpEx, $mx_request_vars; 
-		
+		global $template, $lang, $phpEx, $pafiledb_config, $userdata;
+		global $mx_root_path, $module_root_path, $is_block, $mx_request_vars;
+
 		// =======================================================
 		// Request vars
 		// =======================================================
 		$start = $mx_request_vars->request('start', MX_TYPE_INT, 0);
 		$cat_id = $mx_request_vars->request('cat_id', MX_TYPE_INT, '');
-				
+
 		if ( empty( $cat_id ) )
 		{
 			mx_message_die( GENERAL_MESSAGE, $lang['Cat_not_exist'] );
 		}
 
+		//
+		// Sorting of items
+		//
 		if ( isset( $_REQUEST['sort_method'] ) )
 		{
 			switch ( $_REQUEST['sort_method'] )
@@ -91,8 +88,8 @@ class pafiledb_category extends pafiledb_public
 		else
 		{
 			$sort_order = $pafiledb_config['sort_order'];
-		} 
-		
+		}
+
 		// =======================================================
 		// If user not allowed to view file listing (read) and there is no sub Category
 		// or the user is not allowed to view these category we gave him a nice message.
@@ -102,7 +99,7 @@ class pafiledb_category extends pafiledb_public
 		{
 			foreach( $this->subcat_rowset[$cat_id] as $sub_cat_id => $sub_cat_row )
 			{
-				if ( $this->auth[$sub_cat_id]['auth_view'] )
+				if ( $this->auth_user[$sub_cat_id]['auth_view'] )
 				{
 					$show_category = true;
 					break;
@@ -110,30 +107,38 @@ class pafiledb_category extends pafiledb_public
 			}
 		}
 
-		if ( ( !$this->auth[$cat_id]['auth_read'] ) && ( !$show_category ) )
+		if ( ( !$this->auth_user[$cat_id]['auth_read'] ) && ( !$show_category ) )
 		{
 			if ( !$userdata['session_logged_in'] )
 			{
-				// mx_redirect(append_sid($mx_root_path . "login.$phpEx?redirect=". pa_this_mxurl("action=category&cat_id=" . $cat_id, true), true));
+				// mx_redirect(mx_append_sid($mx_root_path . "login.$phpEx?redirect=". $this->this_mxurl("action=category&cat_id=" . $cat_id, true), true));
 			}
 
-			$message = sprintf( $lang['Sorry_auth_view'], $this->auth[$cat_id]['auth_read_type'] );
+			$message = sprintf( $lang['Sorry_auth_view'], $this->auth_user[$cat_id]['auth_read_type'] );
 			mx_message_die( GENERAL_MESSAGE, $message );
 		}
 
 		if ( !isset( $this->cat_rowset[$cat_id] ) )
 		{
 			mx_message_die( GENERAL_MESSAGE, $lang['Cat_not_exist'] );
-		} 
-		
-		$pafiledb_template->assign_vars( array( 
-				'L_INDEX' => "<<",
+		}
 
-				'U_INDEX' => append_sid( $mx_root_path . 'index.' . $phpEx ),
-				'U_DOWNLOAD' => append_sid( pa_this_mxurl() ),
-				
-				'DOWNLOAD' => $pafiledb_config['module_name'] ) 
-			);
+		//
+		// Validate Comments Setup
+		//
+		if ( $this->comments[$cat_id]['activated'] && !$this->comments[$cat_id]['internal_comments'] && $this->comments[$cat_id]['comments_forum_id'] < 1 )
+		{
+			//
+			// Commenting is enabled but no category forum id specified
+			//
+			$message = $lang['No_cat_comments_forum_id'];
+			mx_message_die(GENERAL_MESSAGE, $message);
+		}
+
+		$template->assign_vars( array(
+			'U_DOWNLOAD' => mx_append_sid( $this->this_mxurl() ),
+			'DOWNLOAD' => $pafiledb_config['module_name'] )
+		);
 
 		$no_file_message = true;
 		$filelist = false;
@@ -142,23 +147,29 @@ class pafiledb_category extends pafiledb_public
 		// assign var for navigation
 		// ===================================================
 		$this->generate_navigation( $cat_id );
-				
+
 		if ( isset( $this->subcat_rowset[$cat_id] ) )
 		{
 			$no_file_message = false;
 
-			$this->display_categories( $cat_id );
+			if ($pafiledb_config['use_simple_navigation'])
+			{
+				$this->display_categories($cat_id);
+			}
+			else
+			{
+				$this->display_categories_original($cat_id);
+			}
 		}
 
-		$this->display_files( $sort_method, $sort_order, $start, $no_file_message, $cat_id );
-		
+		$this->display_items( $sort_method, $sort_order, $start, $cat_id, $no_file_message );
+
 		//
 		// User authorisation levels output
 		//
-		$this->auth_can($cat_id);		
+		$this->auth_can($cat_id);
 
 		$this->display( $lang['Download'], 'pa_category_body.tpl' );
 	}
 }
-
 ?>

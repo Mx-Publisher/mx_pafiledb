@@ -1,47 +1,60 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: functions_cache.php,v 1.5 2005/12/08 15:15:12 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: functions_cache.php,v 1.10 2009/10/08 23:23:26 orynider Exp $
+* @copyright (c) 2002-2006 [Mohd Basri, PHP Arena, pafileDB, Jon Ohlsson] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
+*/
+
 if ( !defined( 'IN_PORTAL' ) )
 {
 	die( "Hacking attempt" );
 }
 
+/**
+ * Generic module cache.
+ *
+ */
 class pafiledb_cache
 {
 	var $vars = '';
 	var $vars_ts = array();
 	var $modified = false;
 
-	function pafiledb_cache()
+	/**
+	 * Enter description here...
+	 *
+	 * @return pafiledb_cache
+	 */
+	function pafiledb_cache($dir=false)
 	{
 		global $phpbb_root_path;
 		global $mx_root_path, $module_root_path, $is_block, $phpEx;
-		$this->cache_dir = $module_root_path . 'pafiledb/cache/';
+
+		if (!$dir)
+		{
+			mx_message_die(GENERAL_ERROR, 'The module cache need a init dir.');
+		}
+
+		$this->cache_dir = $dir . 'cache/';
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 */
 	function load()
 	{
 		global $phpEx;
 		@include( $this->cache_dir . 'data_global.' . $phpEx );
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 */
 	function unload()
 	{
 		$this->save();
@@ -49,6 +62,10 @@ class pafiledb_cache
 		unset( $this->vars_ts );
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 */
 	function save()
 	{
 		if ( !$this->modified )
@@ -68,6 +85,11 @@ class pafiledb_cache
 		}
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $expire_time
+	 */
 	function tidy( $expire_time = 0 )
 	{
 		global $phpEx;
@@ -103,11 +125,24 @@ class pafiledb_cache
 		}
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $varname
+	 * @param unknown_type $expire_time
+	 * @return unknown
+	 */
 	function get( $varname, $expire_time = 0 )
 	{
 		return ( $this->exists( $varname, $expire_time ) ) ? $this->vars[$varname] : null;
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $varname
+	 * @param unknown_type $var
+	 */
 	function put( $varname, $var )
 	{
 		$this->vars[$varname] = $var;
@@ -115,6 +150,11 @@ class pafiledb_cache
 		$this->modified = true;
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $varname
+	 */
 	function destroy( $varname )
 	{
 		if ( isset( $this->vars[$varname] ) )
@@ -125,6 +165,13 @@ class pafiledb_cache
 		}
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $varname
+	 * @param unknown_type $expire_time
+	 * @return unknown
+	 */
 	function exists( $varname, $expire_time = 0 )
 	{
 		if ( !is_array( $this->vars ) )
@@ -144,28 +191,40 @@ class pafiledb_cache
 		return isset( $this->vars[$varname] );
 	}
 
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $array
+	 * @return unknown
+	 */
 	function format_array( $array )
 	{
 		$lines = array();
-		foreach ( $array as $k => $v )
-		{
-			if ( is_array( $v ) )
+		if ( is_array( $v ) )
+		{		
+			foreach ( $array as $k => $v )
 			{
-				$lines[] = "'$k'=>" . $this->format_array( $v );
-			}elseif ( is_int( $v ) )
-			{
-				$lines[] = "'$k'=>$v";
-			}elseif ( is_bool( $v ) )
-			{
-				$lines[] = "'$k'=>" . ( ( $v ) ? 'TRUE' : 'FALSE' );
+				if ( is_array( $v ) )
+				{
+					$lines[] = "'$k'=>" . $this->format_array( $v );
+				}elseif ( is_int( $v ) )
+				{
+					$lines[] = "'$k'=>$v";
+				}elseif ( is_bool( $v ) )
+				{
+					$lines[] = "'$k'=>" . ( ( $v ) ? 'TRUE' : 'FALSE' );
+				}
+				else
+				{
+					$lines[] = "'$k'=>'" . str_replace( "'", "\'", str_replace( '\\', '\\\\', $v ) ) . "'";
+				}
 			}
-			else
-			{
-				$lines[] = "'$k'=>'" . str_replace( "'", "\'", str_replace( '\\', '\\\\', $v ) ) . "'";
-			}
+			return 'array(' . implode( ',', $lines ) . ')';
 		}
-		return 'array(' . implode( ',', $lines ) . ')';
-	}
+		else
+		{
+			return 'array(' . implode( ',', $lines ) . ')';	
+		}		
+	}	
 }
-
 ?>

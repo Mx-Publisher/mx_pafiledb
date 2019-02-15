@@ -1,38 +1,32 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pa_viewall.php,v 1.12 2005/12/08 15:15:13 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
-/*
-  paFileDB 3.0
-  ©2001/2002 PHP Arena
-  Written by Todd
-  todd@phparena.net
-  http://www.phparena.net
-  Keep all copyright links on the script visible
-  Please read the license included with this script for more information.
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pa_viewall.php,v 1.23 2008/09/21 14:25:40 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
 */
 
+if ( !defined( 'IN_PORTAL' ) )
+{
+	die( "Hacking attempt" );
+}
+
+/**
+ * Enter description here...
+ *
+ */
 class pafiledb_viewall extends pafiledb_public
 {
-	function main( $action )
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $action
+	 */
+	function main( $action  = false )
 	{
-		global $pafiledb_template, $lang, $phpEx, $pafiledb_config, $_REQUEST, $userdata;
+		global $template, $lang, $phpEx, $pafiledb_config, $userdata;
 
 		$start = ( isset( $_REQUEST['start'] ) ) ? intval( $_REQUEST['start'] ) : 0;
 
@@ -91,31 +85,30 @@ class pafiledb_viewall extends pafiledb_public
 		{
 			if ( !$userdata['session_logged_in'] )
 			{
-				redirect( append_sid( "login.$phpEx?redirect=dload.$phpEx?action=viewall", true ) );
+				mx_redirect( mx_append_sid( "login.$phpEx?redirect=dload.$phpEx?action=viewall", true ) );
 			}
 
 			$message = sprintf( $lang['Sorry_auth_viewall'], $this->auth_global['auth_viewall_type'] );
 			mx_message_die( GENERAL_MESSAGE, $message );
 		}
 
-		$pafiledb_template->assign_vars( array( 
-				'L_VIEWALL' => $lang['Viewall'],
-				'L_INDEX' => "<<",
+		$template->assign_vars( array(
+			'L_VIEWALL' => $lang['Viewall'],
+			'L_INDEX' => "<<",
 
-				'U_INDEX' => append_sid( $mx_root_path . 'index.' . $phpEx ),
-				'U_DOWNLOAD' => append_sid( pa_this_mxurl() ),
+			'U_INDEX' => mx_append_sid( $mx_root_path . 'index.' . $phpEx ),
+			'U_DOWNLOAD' => mx_append_sid( $this->this_mxurl() ),
 
-				'DOWNLOAD' => $pafiledb_config['module_name'] ) 
-			);
+			'DOWNLOAD' => $pafiledb_config['module_name']
+		));
 
-		$this->display_files( $sort_method, $sort_order, $start, true );
+		$this->display_items( $sort_method, $sort_order, $start, false,  true );
 
 		// ===================================================
 		// assign var for navigation
 		// ===================================================
-		
+
 		$this->display( $lang['Download'], 'pa_viewall_body.tpl' );
 	}
 }
-
 ?>

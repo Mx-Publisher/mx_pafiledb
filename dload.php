@@ -1,68 +1,120 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: dload.php,v 1.16 2005/12/08 15:15:11 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: dload.php,v 1.36 2011/03/14 20:22:31 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
+*/
 
-if ( file_exists( './viewtopic.php' ) ) // -------------------------------------------- phpBB MOD MODE
+$phpEx = substr(strrchr(__FILE__, '.'), 1);
+
+if ( !defined('PORTAL_BACKEND') && @file_exists( './viewtopic.' . $phpEx ) ) // -------------------------------------------- phpBB MOD MODE
 {
-	define( 'MXBB_MODULE', false ); 
+	define( 'MXBB_MODULE', false );
 	define( 'IN_PHPBB', true );
 	define( 'IN_PORTAL', true );
 	define( 'IN_DOWNLOAD', true );
 
 	// When run as a phpBB mod these paths are identical ;)
 	$phpbb_root_path = $module_root_path = $mx_root_path = './';
-	
-	include( $phpbb_root_path . 'extension.inc' );
+	$mx_mod_path = $phpbb_root_path . 'mx_mod/';
+
+	//Check for cash mod
+	if (file_exists($phpbb_root_path . 'includes/functions_cash.'.$phpEx))
+	{
+		define('IN_CASHMOD', true);
+	}
+
 	include( $phpbb_root_path . 'common.' . $phpEx );
 
-	include_once( $phpbb_root_path . 'includes/bbcode.' . $phpEx );
-	include_once( $phpbb_root_path . 'includes/functions_post.' . $phpEx );
-	
-	define( 'PAGE_DOWNLOAD', -501 ); // If this id generates a conflict with other mods, change it ;)	
-	
-	// Start session management
-	$userdata = session_pagestart( $user_ip, PAGE_DOWNLOAD );
-	init_userprefs( $userdata );
-	// End session management
+	@ini_set( 'display_errors', '1' );
+	error_reporting (E_ERROR | E_WARNING | E_PARSE); // This will NOT report uninitialized variables
+
+	include_once( $mx_mod_path . 'includes/functions_required.' . $phpEx );
+	include_once( $mx_mod_path . 'includes/functions_core.' . $phpEx );
+
+	define( 'PAGE_DOWNLOAD', -501 ); // If this id generates a conflict with other mods, change it ;)
+
+	//
+	// Instatiate the mx_cache class
+	//
+	$mx_cache = new mx_cache();
+
+	//
+	// Get MX-Publisher config settings
+	//
+	$portal_config = $mx_cache->obtain_mxbb_config();
+
+	//
+	// instatiate the mx_request_vars class
+	//
+	$mx_request_vars = new mx_request_vars();
+
+	$is_block = false;
+
+	if ( file_exists("./modcp.$phpEx") ) // phpBB2
+	{
+		define('PORTAL_BACKEND', 'phpbb2');
+		$tplEx = 'tpl';
+
+		mx_cache::load_file('bbcode');
+		mx_cache::load_file('functions_post');
+
+		// Start session management
+		$userdata = session_pagestart( $user_ip, PAGE_DOWNLOAD );
+		init_userprefs( $userdata );
+		// End session management
+
+
+	}
+	else if ( @file_exists("./mcp.$phpEx") ) // phpBB3
+	{
+		define('PORTAL_BACKEND', 'phpbb3');
+		$tplEx = 'html';
+
+		//
+		// Start session management
+		//
+		$user->session_begin();
+		$userdata = $user->data;
+		$user->setup();
+		//
+		// End session management
+		//
+
+		//
+		// Get phpBB config settings
+		//
+		$board_config = $config;
+	}
+	else
+	{
+		die('Copy this file in phpbb_root_path were is your viewtopic.php file!!!');
+	}
 }
-else 
-{	
-	define( 'MXBB_MODULE', true ); 
+else
+{
+	define( 'MXBB_MODULE', true );
 
 	if ( !function_exists( 'read_block_config' ) )
 	{
 		if( isset($_REQUEST['action']) && $_REQUEST['action'] == 'download' )
 		{
 		   define('MX_GZIP_DISABLED', true);
-		}		
-		
+		}
+
 		define( 'IN_PORTAL', true );
 		$mx_root_path = '../../';
-		include_once( $mx_root_path . 'extension.inc' );
-		include_once( $mx_root_path . 'common.' . $phpEx ); 
-		
+		$phpEx = substr(strrchr(__FILE__, '.'), 1);
+		include_once( $mx_root_path . 'common.' . $phpEx );
+
 		// Start session management
-		$userdata = session_pagestart( $user_ip, PAGE_INDEX );
-		mx_init_userprefs( $userdata ); 
+		$mx_user->init($user_ip, PAGE_INDEX);
 		// End session management
-		
-		$block_id = ( !empty( $HTTP_GET_VARS['block_id'] ) ) ? $HTTP_GET_VARS['block_id'] : $HTTP_POST_VARS['id'];
+
+		$block_id = ( !empty( $_GET['block_id'] ) ) ? $_GET['block_id'] : $_POST['id'];
 		if ( empty( $block_id ) )
 		{
 			$sql = "SELECT * FROM " . BLOCK_TABLE . "  WHERE block_title = 'PafileDB' LIMIT 1";
@@ -76,28 +128,41 @@ else
 		$is_block = false;
 	}
 	else
-	{ 
+	{
+		if( !defined('IN_PORTAL') || !is_object($mx_block))
+		{
+			die("Hacking attempt");
+		}
 		//
 		// Read Block Settings (default mode)
 		//
 		$title = $mx_block->block_info['block_title'];
 		$block_size = ( isset( $block_size ) && !empty( $block_size ) ? $block_size : '100%' );
-	
+
+		//Check for cash mod
+		if (file_exists($phpbb_root_path . 'includes/functions_cash.'.$phpEx))
+		{
+			define('IN_CASHMOD', true);
+		}
+
 		$is_block = true;
 		global $images;
 	}
-	define( 'MXBB_27x', file_exists( $mx_root_path . 'mx_login.php' ) );
+	define( 'MXBB_27x', @file_exists( $mx_root_path . 'mx_login.'.$phpEx ) );
+	define( 'MXBB_28x', @file_exists( $mx_root_path . 'includes/sessions/index.htm' ) );
 }
 
 // -------------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------------------
+// Start
 // -------------------------------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------------------------------
 
 // ===================================================
 // ?
 // ===================================================
-list( $trash, $mx_script_name_temp ) = split ( trim( $board_config['server_name'] ), PORTAL_URL );
-$mx_script_name = preg_replace( '#^\/?(.*?)\/?$#', '\1', trim( $mx_script_name_temp ) );
+list($trash, $mx_script_name_temp ) = preg_split(trim('//', $board_config['server_name']), PORTAL_URL);
+$mx_script_name = preg_replace('#^\/?(.*?)\/?$#', '\1', trim($mx_script_name_temp));
 
 // ===================================================
 // Include the common file
@@ -105,24 +170,36 @@ $mx_script_name = preg_replace( '#^\/?(.*?)\/?$#', '\1', trim( $mx_script_name_t
 include_once( $module_root_path . 'pafiledb/pafiledb_common.' . $phpEx );
 
 // ===================================================
-// Get action variable other wise set it to the main
+// Get action variable otherwise set it to the main
 // ===================================================
 $action = $mx_request_vars->request('action', MX_TYPE_NO_TAGS, 'main');
 
-$is_admin = ( ( $userdata['user_level'] == ADMIN  ) && $userdata['session_logged_in'] ) ? true : 0;
+// ===================================================
+// Is admin?
+// ===================================================
+switch (PORTAL_BACKEND)
+{
+	case 'internal':
+	case 'phpbb2':
+		$is_admin = ( ( $userdata['user_level'] == ADMIN  ) && $userdata['session_logged_in'] ) ? true : 0;
+		break;
+	case 'phpbb3':
+		$is_admin = ( $userdata['user_type'] == USER_FOUNDER ) ? true : 0;
+		break;
+}
 
 // ===================================================
-// if the database disabled give them a nice message
+// if the module is disabled give them a nice message
 // ===================================================
-if ( intval( $pafiledb_config['module_enable'] ) )
+if (!($pafiledb_config['enable_module'] || $mx_user->is_admin))
 {
-	mx_message_die( GENERAL_MESSAGE, $lang['pafiledb_disable'] );
+	//mx_message_die( GENERAL_MESSAGE, $lang['pafiledb_disable'] );
 }
 
 // ===================================================
 // an array of all expected actions
 // ===================================================
-$actions = array( 
+$actions = array(
 	'download' => 'download',
 	'category' => 'category',
 	'file' => 'file',
@@ -138,7 +215,7 @@ $actions = array(
 	'mcp' => 'mcp',
 	'ucp' => 'ucp',
 	'main' => 'main' );
-	
+
 // ===================================================
 // Lets Build the page
 // ===================================================

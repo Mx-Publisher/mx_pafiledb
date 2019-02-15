@@ -62,7 +62,7 @@ define('IN_PHPBB', true);
 define('IN_PORTAL', true);
 
 $mx_root_path = './../../../../';
- include($mx_root_path . 'extension.inc');
+ $phpEx = substr(strrchr(__FILE__, '.'), 1);
  include($mx_root_path . 'common.'.$phpEx);
 
 //
@@ -73,13 +73,12 @@ $userdata = session_pagestart($user_ip, PAGE_REGISTER);
 init_userprefs($userdata);
 */
 //MX
-  $userdata = session_pagestart($user_ip, PAGE_INDEX);
-  mx_init_userprefs($userdata);
+  $mx_user->init($user_ip, PAGE_INDEX);
 
 
 if ((!$userdata['session_logged_in']) && ($userdata['user_level'] != ADMIN))
 {
-	redirect(append_sid("index.$phpEx", true));
+	mx_redirect(mx_append_sid("index.$phpEx", true));
 }
 
 /*
@@ -99,12 +98,12 @@ function dirTable() {
 function dirFooter() {
         $content  = "</table>";
         return $content;
-} 
-  
+}
+
 function fType($file) {
 	$varFileType = filetype($file);
 	if($varFileType != "dir") {
-		$curdir = getcwd(); 
+		$curdir = getcwd();
 		$pInfo = pathinfo("$curdir/$file");
 		$varFileType = $pInfo["extension"];
 	}
@@ -165,7 +164,7 @@ if($dirtext) {
                         $lastchanged = filectime($file);
                         $changeddate = date("d-m-Y H:i:s", $lastchanged);
                         $filesize = display_size(filesize($file));
-                        $filetype = fType($file);   
+                        $filetype = fType($file);
                         $viewfile = fileView($file);
                         $content .= "<tr><td><font size=-1>$filetype</font></td>";
                         $content .= "<td><font size=-1><a href=\"$file\">$file</a> $viewfile</font></td>";
@@ -206,15 +205,15 @@ function diskStats($scriptStats) {
 <html>
 	<head>
 
-	<? if($scriptLocation == "") { 
-		print($scriptCSS); 
+	<? if($scriptLocation == "") {
+		print($scriptCSS);
 	} else {
 		print("<LINK REL=stylesheet HREF=\"$scriptLocation\" TYPE=\"text/css\">");
 	} ?>
 	</head>
 <body>
 <?
-	
+
 	diskStats($scriptStats);
 	print(dirHeader());
 	print(dirTable());

@@ -1,22 +1,12 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pafiledb_common.php,v 1.12 2005/12/08 15:15:13 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pafiledb_common.php,v 1.28 2009/07/29 05:08:13 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
+*/
 
 if ( !defined( 'IN_PORTAL' ) )
 {
@@ -41,6 +31,7 @@ if ( !@function_exists( 'slash_input_data' ) )
 		return $data;
 	}
 }
+
 // ===================================================
 // to make it work with php version under 4.1 and other stuff
 // ===================================================
@@ -70,61 +61,174 @@ if ( !get_magic_quotes_gpc() )
 */
 
 // ===================================================
-// Include pafiledb data file
+// Include Files
 // ===================================================
-
 include_once( $module_root_path . 'pafiledb/includes/pafiledb_constants.' . $phpEx );
-include_once( $module_root_path . 'pafiledb/includes/functions.' . $phpEx );
-include_once( $module_root_path . 'pafiledb/includes/functions_cache.' . $phpEx );
-include_once( $module_root_path . 'pafiledb/includes/functions_auth.' . $phpEx );
-include_once( $module_root_path . 'pafiledb/includes/functions_mx.' . $phpEx );
-include_once( $module_root_path . 'pafiledb/includes/functions_pafiledb.' . $phpEx );
-include_once( $module_root_path . 'pafiledb/includes/template.' . $phpEx );
 
-$pafiledb_cache = new pafiledb_cache();
-$pafiledb_functions = new pafiledb_functions();
-
-if ( $pafiledb_cache->exists( 'config' ) )
+//
+// Load addon tools
+//
+// - Class module_cache
+// - Class mx_custom_fields (pafiledb needs its own class version in functions.php)
+// - Class mx_notification
+// - Class mx_text
+// - Class mx_text_formatting
+//
+if ( !MXBB_MODULE )
 {
-	$pafiledb_config = $pafiledb_cache->get( 'config' );
+	include_once( $mx_mod_path . 'includes/functions_tools.' . $phpEx );
 }
 else
 {
-	$pafiledb_config = $pafiledb_functions->pafiledb_config();
-	$pafiledb_cache->put( 'config', $pafiledb_config );
+	include_once( $mx_root_path . 'includes/mx_functions_tools.' . $phpEx );
 }
 
-$pafiledb_template = new pafiledb_template();
-$pafiledb_template->set_template( $theme['template_name'] );
+// **********************************************************************
+// If phpBB mod read language definition
+// **********************************************************************
 
-$pafiledb_user = new pafiledb_user_info();
-$pafiledb = new pafiledb_public();
-
-// ===================================================
-// url rewrites
-// ===================================================
-function pa_this_mxurl( $args = '', $force_standalone_mode = false, $non_html_amp = false )
+if ( !MXBB_MODULE )
 {
-	global $mx_root_path, $module_root_path, $page_id, $phpEx, $is_block;
-
-	if ( $force_standalone_mode || !$is_block )
+	if ( !file_exists( $module_root_path . 'pafiledb/language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx ) )
 	{
-		$mxurl = $module_root_path . 'dload.' . $phpEx . ( $args == '' ? '' : '?' . $args );
+		include( $module_root_path . 'pafiledb/language/lang_english/lang_main.' . $phpEx );
 	}
 	else
 	{
-		$mxurl = $mx_root_path . 'index.' . $phpEx;
-		
-		if ( is_numeric( $page_id ) )
+		include( $module_root_path . 'pafiledb/language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx );
+	}
+}
+
+// **********************************************************************
+//  If phpBB mod read theme definition and language in theme definition
+// **********************************************************************
+if ( !MXBB_MODULE )
+{
+	$sql = 'SELECT *
+		FROM ' . THEMES_TABLE . '
+		WHERE themes_id = ' . (int) $userdata['user_style'];
+	if ( !($result = $db->sql_query($sql)) )
+	{
+		message_die(CRITICAL_ERROR, 'Could not query database for theme info');
+	}
+
+	if ( $row = $db->sql_fetchrow($result) )
+	{
+		$db->sql_freeresult($result);
+		$template_name = $row['template_name'] ;
+	}
+	else
+	{
+		// We are trying to setup a style which does not exist in the database
+		// Try to fallback to the board default (if the user had a custom style)
+		// and then any users using this style to the default if it succeeds
+		if ( $userdata['user_style'] != $board_config['default_style'])
 		{
-			$mxurl .= '?page=' . $page_id . ( $args == '' ? '' : ( $non_html_amp ? '&' : '&amp;' ) . $args );
+			$sql = 'SELECT *
+				FROM ' . THEMES_TABLE . '
+				WHERE themes_id = ' . (int) $board_config['default_style'];
+			if ( !($result = $db->sql_query($sql)) )
+			{
+				message_die(CRITICAL_ERROR, 'Could not query database for theme info');
+			}
+			if ( $row = $db->sql_fetchrow($result) )
+			{
+				$db->sql_freeresult($result);
+				$template_name = $row['template_name'] ;
+			}
+			else
+			{
+				message_die(CRITICAL_ERROR, "Could not get theme data for themes_id [$style]");
+			}
 		}
 		else
 		{
-			$mxurl .= ( $args == '' ? '' : '?' . $args );
+			message_die(CRITICAL_ERROR, "Could not get theme data for themes_id [$style]");
 		}
 	}
-	return $mxurl;
+
+	$template_path = 'templates/' ;
+
+	if ( $template )
+	{
+		$current_template_path = $template_path . $template_name;
+	}
+	else
+	{
+		$current_template_path = $template_path . 'subSilver';
+	}
+
+	// -------------------------------------------------------------------------
+	// Prefix with PORTAL_URL
+	// -------------------------------------------------------------------------
+	$current_template_images = PORTAL_URL . $current_template_path . "/images";
+
+	@include($phpbb_root_path . $template_path . $template_name . '/' . 'pafiledb.cfg');
+
+	$img_lang = ( file_exists($mx_root_path . $current_template_path . '/images/lang_' . $board_config['default_lang']) ) ? $board_config['default_lang'] : 'english';
+
+	while( list($key, $value) = @each($mx_images) )
+	{
+		if (is_array($value))
+		{
+			foreach( $value as $key2 => $val2 )
+			{
+				$images[$key][$key2] = $val2;
+				$mx_images[$key][$key2] = $val2;
+			}
+			}
+		else
+		{
+			$images[$key] = str_replace('{LANG}', 'lang_' . $img_lang, $value);
+			$mx_images[$key] = str_replace('{LANG}', 'lang_' . $img_lang, $value);
+		}
+	}
 }
 
+include_once($module_root_path . 'pafiledb/includes/functions.' . $phpEx);
+include_once($module_root_path . 'pafiledb/includes/functions_auth.' . $phpEx );
+include_once($module_root_path . 'pafiledb/includes/functions_cache.' . $phpEx); //Temp fix
+include_once($module_root_path . 'pafiledb/includes/functions_pafiledb.' . $phpEx);
+
+//
+// Load a wrapper for common phpBB2 functions (compatibility with core 2.8.x)
+//
+if ( defined('MXBB_28x') )
+{
+	include_once( $mx_root_path . 'includes/shared/phpbb2/includes/functions.' . $phpEx );
+}
+
+//
+// We need XS templates, also when ran as a phpBB2 MOD
+//
+if ( !MXBB_MODULE )
+{
+	include_once($module_root_path . 'pafiledb/includes/template.' . $phpEx); // Include XS template
+	$template = new Template($module_root_path . 'templates/'. $theme['template_name']);
+}
+
+// ===================================================
+// Load classes
+// ===================================================
+$pafiledb_cache = new pafiledb_cache($module_root_path . 'pafiledb/');
+$pafiledb_functions = new pafiledb_functions();
+
+$pafiledb_config = $pafiledb_functions->obtain_pafiledb_config();
+		
+if ($pafiledb_config['allow_comment_wysiwyg'] == '')
+{
+	$pafiledb_config = $pafiledb_functions->obtain_pafiledb_config(false);
+}
+
+$pafiledb_user = new mx_user_info();
+
+if (defined('IN_ADMIN'))
+{
+	include_once( $module_root_path . 'pafiledb/includes/functions_admin.' . $phpEx );
+	$pafiledb = new pafiledb_admin();
+}
+else
+{
+	$pafiledb = new pafiledb_public();
+}
 ?>

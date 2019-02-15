@@ -1,40 +1,60 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pa_download.php,v 1.13 2005/12/08 15:15:13 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
-/*
-  paFileDB 3.0
-  ©2001/2002 PHP Arena
-  Written by Todd
-  todd@phparena.net
-  http://www.phparena.net
-  Keep all copyright links on the script visible
-  Please read the license included with this script for more information.
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pa_download.php,v 1.25 2008/09/21 14:25:28 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
 */
 
+if ( !defined( 'IN_PORTAL' ) )
+{
+	die( "Hacking attempt" );
+}
+
+/**
+ * Enter description here...
+ *
+ */
 class pafiledb_download extends pafiledb_public
 {
-	function main( $action )
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $action
+	 */
+	function main( $action  = false )
 	{
-		global $_REQUEST, $lang, $db, $pafiledb_user, $pafiledb_config, $board_config, $phpEx, $userdata;
-		global $phpbb_root_path, $_SERVER, $pafiledb_functions; 
+		global $lang, $db, $pafiledb_user, $pafiledb_config, $board_config, $phpEx, $userdata;
+		global $phpbb_root_path, $pafiledb_functions;
 		global $mx_script_name, $module_root_path;
+
+		// **********************************************************************
+		// Read language definition
+		// **********************************************************************
+		if ( !MXBB_MODULE )
+		{
+			if ( !file_exists( $module_root_path . 'pafiledb/language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx ) )
+			{
+				include( $module_root_path . 'pafiledb/language/lang_english/lang_main.' . $phpEx );
+			}
+			else
+			{
+				include( $module_root_path . 'pafiledb/language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx );
+			}
+		}
+		else
+		{
+			if ( !file_exists( $module_root_path . 'language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx ) )
+			{
+				include( $module_root_path . 'language/lang_english/lang_main.' . $phpEx );
+			}
+			else
+			{
+				include( $module_root_path . 'language/lang_' . $board_config['default_lang'] . '/lang_main.' . $phpEx );
+			}
+		}
 
 		if ( isset( $_REQUEST['file_id'] ) )
 		{
@@ -54,7 +74,7 @@ class pafiledb_download extends pafiledb_public
 		if ( !( $result = $db->sql_query( $sql ) ) )
 		{
 			mx_message_die( GENERAL_ERROR, 'Couldnt select download', '', __LINE__, __FILE__, $sql );
-		} 
+		}
 		// =========================================================================
 		// Id doesn't match with any file in the database another nice error message
 		// =========================================================================
@@ -63,20 +83,20 @@ class pafiledb_download extends pafiledb_public
 			mx_message_die( GENERAL_MESSAGE, $lang['File_not_exist'] );
 		}
 
-		$db->sql_freeresult( $result ); 
+		$db->sql_freeresult( $result );
 		// =========================================================================
 		// Check if the user is authorized to download the file
 		// =========================================================================
-		if ( ( !$this->auth[$file_data['file_catid']]['auth_download'] ) )
+		if ( ( !$this->auth_user[$file_data['file_catid']]['auth_download'] ) )
 		{
 			if ( !$userdata['session_logged_in'] )
 			{
-				// mx_redirect(append_sid($mx_root_path . "login.$phpEx?redirect=".pa_this_mxurl("action=download&file_id=" . $file_id), true));
+				// mx_redirect(mx_append_sid($mx_root_path . "login.$phpEx?redirect=".$this->this_mxurl("action=download&file_id=" . $file_id), true));
 			}
 
-			$message = sprintf( $lang['Sorry_auth_download'], $this->auth[$file_data['file_catid']]['auth_download_type'] );
+			$message = sprintf( $lang['Sorry_auth_download'], $this->auth_user[$file_data['file_catid']]['auth_download_type'] );
 			mx_message_die( GENERAL_MESSAGE, $message );
-		} 
+		}
 		// =========================================================================
 		// Check for hot links
 		// Borrowed from Smartor Album mod, thanks Smartor
@@ -138,33 +158,32 @@ class pafiledb_download extends pafiledb_public
 
 		if ( !empty( $mirrors_data ) && !$mirror_id )
 		{
-			global $pafiledb_template;
 			global $template, $db, $theme, $gen_simple_header, $starttime;
 
-			$pafiledb_template->assign_vars( array( 
-					'L_INDEX' => "<<",
-					'L_MIRRORS' => $lang['Mirrors'],
-					'L_MIRROR_LOCATION' => $lang['Mirror_location'],
-					'L_DOWNLOAD' => $lang['Download_file'],
+			$template->assign_vars( array(
+				'L_INDEX' => "<<",
+				'L_MIRRORS' => $lang['Mirrors'],
+				'L_MIRROR_LOCATION' => $lang['Mirror_location'],
+				'L_DOWNLOAD' => $lang['Download_file'],
 
-					'U_INDEX' => append_sid( $mx_root_path . 'index.' . $phpEx ),
-					'U_DOWNLOAD_HOME' => append_sid( pa_this_mxurl() ),
+				'U_INDEX' => mx_append_sid( $mx_root_path . 'index.' . $phpEx ),
+				'U_DOWNLOAD_HOME' => mx_append_sid( $this->this_mxurl() ),
 
-					'FILE_NAME' => $file_data['file_name'],
-					'DOWNLOAD' => $pafiledb_config['module_name'] ) 
-				);
+				'FILE_NAME' => $file_data['file_name'],
+				'DOWNLOAD' => $pafiledb_config['module_name']
+			));
 
-			$pafiledb_template->assign_block_vars( 'mirror_row', array( 
-					'U_DOWNLOAD' => append_sid( $pa_this_mxurl( 'action=download&file_id=' . $file_id . '&mirror_id=-1' ) ),
-					'MIRROR_LOCATION' => $board_config['sitename'] ) 
-				);
+			$template->assign_block_vars( 'mirror_row', array(
+				'U_DOWNLOAD' => mx_append_sid( $$this->this_mxurl( 'action=download&file_id=' . $file_id . '&mirror_id=-1' ) ),
+				'MIRROR_LOCATION' => $board_config['sitename']
+			));
 
 			foreach( $mirrors_data as $mir_id => $mirror_data )
 			{
-				$pafiledb_template->assign_block_vars( 'mirror_row', array( 
-						'U_DOWNLOAD' => append_sid( pa_this_mxurl( 'action=download&file_id=' . $file_id . '&mirror_id=' . $mir_id ) ),
-						'MIRROR_LOCATION' => $mirror_data['mirror_location'] ) 
-					);
+				$template->assign_block_vars( 'mirror_row', array(
+					'U_DOWNLOAD' => mx_append_sid( $this->this_mxurl( 'action=download&file_id=' . $file_id . '&mirror_id=' . $mir_id ) ),
+					'MIRROR_LOCATION' => $mirror_data['mirror_location']
+				));
 			}
 
 			// ===================================================
@@ -193,24 +212,24 @@ class pafiledb_download extends pafiledb_public
 		else
 		{
 			mx_message_die( GENERAL_MESSAGE, 'Mirror doesn\'t exist' );
-		} 
+		}
 		// =========================================================================
 		// Update download counter and the last downloaded date
 		// =========================================================================
 		$current_time = time();
 		$file_dls = intval( $file_data['file_dls'] ) + 1;
-		$sql = 'UPDATE ' . PA_FILES_TABLE . " 
-			SET file_dls = $file_dls, file_last = $current_time 
+		$sql = 'UPDATE ' . PA_FILES_TABLE . "
+			SET file_dls = $file_dls, file_last = $current_time
 			WHERE file_id = $file_id";
 
 		if ( !( $db->sql_query( $sql ) ) )
 		{
 			mx_message_die( GENERAL_ERROR, 'Couldnt Update Files table', '', __LINE__, __FILE__, $sql );
-		} 
+		}
 		// =========================================================================
 		// Update downloader Info for the given file
 		// =========================================================================
-		$pafiledb_user->update_downloader_info( $file_id );
+		$pafiledb_user->update_info( $file_id );
 
 		if ( !empty( $file_url ) )
 		{
@@ -218,178 +237,12 @@ class pafiledb_download extends pafiledb_public
 			pa_redirect( $file_url );
 		}
 		else
-		{ 
-			// =========================================================================
-			// now send the file to the user so he can enjoy it :D
-			// =========================================================================
-			if($pafiledb_functions->get_extension($physical_filename) == 'pdf')
-			{
-			   $mimetype = 'application/pdf';
-			}
-			else
-			{
-			   $mimetype = 'application/force-download';
-			}
-			
-			if(!send_file_to_browser($real_filename, $mimetype, $physical_filename, $module_root_path . $upload_dir))
+		{
+			if(!send_file_to_browser($real_filename, $physical_filename, $module_root_path . $upload_dir))
 			{
 			   mx_message_die(GENERAL_ERROR, $lang['Error_no_download'] . '<br /><br /><b>404 File Not Found:</b> The File <i>' . $real_filename . '</i> does not exist.');
 			}
 		}
 	}
 }
-// =========================================================================
-// this function Borrowed from Acyd Burn attachment mod, (thanks Acyd for this great mod)
-// =========================================================================
-function send_file_to_browser( $real_filename, $mimetype, $physical_filename, $upload_dir )
-{
-	global $_SERVER, $HTTP_USER_AGENT, $HTTP_SERVER_VARS, $lang, $db, $pafiledb_functions;
-
-	if ( $upload_dir == '' )
-	{
-		$filename = $physical_filename;
-	}
-	else
-	{
-		$filename = $upload_dir . $physical_filename;
-	}
-
-	$gotit = false;
-
-	if ( @!file_exists( @$pafiledb_functions->pafiledb_realpath( $filename ) ) )
-	{
-		mx_message_die( GENERAL_ERROR, $lang['Error_no_download'] . '<br /><br /><b>404 File Not Found:</b> The File <i>' . $filename . '</i> does not exist.' );
-	}
-	else
-	{
-		$gotit = true;
-		$size = @filesize( $filename );
-		if ( $size > ( 1048575 * 6 ) )
-		{
-			return false;
-		}
-	} 
-	
-	// Determine the Browser the User is using, because of some nasty incompatibilities.
-	// Most of the methods used in this function are from phpMyAdmin. :)
-	
-	$user_agent = ( !empty( $_SERVER['HTTP_USER_AGENT'] ) ) ? $_SERVER['HTTP_USER_AGENT'] : ( ( !empty( $HTTP_SERVER_VARS['HTTP_USER_AGENT'] ) ) ? $HTTP_SERVER_VARS['HTTP_USER_AGENT'] : '' );
-
-	if ( ereg( 'Opera(/| )([0-9].[0-9]{1,2})', $user_agent, $log_version ) )
-	{
-		$browser_version = $log_version[2];
-		$browser_agent = 'opera';
-	}
-	else if ( ereg( 'MSIE ([0-9].[0-9]{1,2})', $user_agent, $log_version ) )
-	{
-		$browser_version = $log_version[1];
-		$browser_agent = 'ie';
-	}
-	else if ( ereg( 'OmniWeb/([0-9].[0-9]{1,2})', $user_agent, $log_version ) )
-	{
-		$browser_version = $log_version[1];
-		$browser_agent = 'omniweb';
-	}
-	else if ( ereg( '(Konqueror/)(.*)(;)', $user_agent, $log_version ) )
-	{
-		$browser_version = $log_version[2];
-		$browser_agent = 'konqueror';
-	}
-	else if ( ereg( 'Mozilla/([0-9].[0-9]{1,2})', $user_agent, $log_version ) && ereg( 'Safari/([0-9]*)', $user_agent, $log_version2 ) )
-	{
-		$browser_version = $log_version[1] . '.' . $log_version2[1];
-		$browser_agent = 'safari';
-	}
-	else if ( ereg( 'Mozilla/([0-9].[0-9]{1,2})', $user_agent, $log_version ) )
-	{
-		$browser_version = $log_version[1];
-		$browser_agent = 'mozilla';
-	}
-	else
-	{
-		$browser_version = 0;
-		$browser_agent = 'other';
-	} 
-	
-	// Correct the Mime Type, if it's an octetstream
-	
-	if ( ( $mimetype == 'application/octet-stream' ) || ( $mimetype == 'application/octetstream' ) )
-	{
-		if ( ( $browser_agent == 'ie' ) || ( $browser_agent == 'opera' ) )
-		{
-			$mimetype = 'application/octetstream';
-		}
-		else
-		{
-			$mimetype = 'application/octet-stream';
-		}
-	}
-
-	@ob_end_clean();
-	@ini_set( 'zlib.output_compression', 'Off' );
-	header( 'Pragma: public' );
-	header( 'Content-Transfer-Encoding: none' ); 
-	
-	// Send out the Headers
-	
-	if ( $browser_agent == 'ie' )
-	{
-		header( 'Content-Type: ' . $mimetype . '; name="' . $real_filename . '"' );
-		header( 'Content-Disposition: inline; filename="' . $real_filename . '"' );
-	}
-	else
-	{
-		header( 'Content-Type: ' . $mimetype . '; name="' . $real_filename . '"' );
-		header( 'Content-Disposition: attachment; filename=' . $real_filename );
-	} 
-	
-	// Now send the File Contents to the Browser
-	
-	if ( $gotit )
-	{
-		if ( $size )
-		{
-			header( "Content-length: $size" );
-		}
-
-		$result = @readfile( $filename );
-
-		if ( !$result )
-		{
-			return true;
-		}
-	}
-	else
-	{
-		return false;
-	}
-
-	@flush();
-	exit();
-}
-
-function pa_redirect( $file_url )
-{
-	global $pafiledb_cache, $db;
-	if ( isset( $db ) )
-	{
-		$db->sql_close();
-	}
-
-	if ( isset( $pafiledb_cache ) )
-	{
-		$pafiledb_cache->unload();
-	} 
-	// Redirect via an HTML form for PITA webservers
-	if ( @preg_match( '/Microsoft|WebSTAR|Xitami/', getenv( 'SERVER_SOFTWARE' ) ) )
-	{
-		header( 'Refresh: 0; URL=' . $file_url );
-		echo '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html><head><meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"><meta http-equiv="refresh" content="0; url=' . $file_url . '"><title>Redirect</title></head><body><div align="center">If your browser does not support meta redirection please click <a href="' . $file_url . '">HERE</a> to be redirected</div></body></html>';
-		exit;
-	} 
-	// Behave as per HTTP/1.1 spec for others
-	Header( "Location: $file_url" );
-	exit();
-}
-
 ?>

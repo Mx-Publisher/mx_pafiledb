@@ -1,345 +1,411 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pa_user_upload.php,v 1.14 2005/12/08 15:15:13 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
-/*
-  paFileDB 3.0
-  ©2001/2002 PHP Arena
-  Written by Todd
-  todd@phparena.net
-  http://www.phparena.net
-  Keep all copyright links on the script visible
-  Please read the license included with this script for more information.
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pa_user_upload.php,v 1.33 2009/07/29 05:08:13 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
 */
 
+if ( !defined( 'IN_PORTAL' ) )
+{
+	die( "Hacking attempt" );
+}
+
+/**
+ * Enter description here...
+ *
+ */
 class pafiledb_user_upload extends pafiledb_public
 {
-	function main( $action )
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $action
+	 */
+	function main( $action  = false )
 	{
-		global $_REQUEST, $_POST, $pafiledb_config, $phpbb_root_path;
-		global $pafiledb_template, $db, $lang, $userdata, $user_ip, $phpEx, $pafiledb_functions; 
-		global $mx_root_path, $module_root_path, $is_block, $phpEx; 
-		
-		// =======================================================
-		// Get Vars
-		// =======================================================
-		include( $module_root_path . 'pafiledb/includes/functions_field.' . $phpEx );
+		global $pafiledb_config, $board_config, $phpbb_root_path;
+		global $template, $db, $lang, $userdata, $user_ip, $phpEx, $pafiledb_functions;
+		global $mx_root_path, $module_root_path, $is_block, $mx_request_vars, $mx_block;
 
-		$custom_field = new custom_field();
-		$custom_field->init();
+		//
+		// Go full page
+		//
+		$mx_block->full_page = true;
 
-		$cat_id = ( isset( $_REQUEST['cat_id'] ) ) ? intval( $_REQUEST['cat_id'] ) : 0;
+		// =======================================================
+		// Request vars
+		// =======================================================
+		$cat_id = $mx_request_vars->request('cat_id', MX_TYPE_INT, 0);
+		$file_id = $mx_request_vars->request('file_id', MX_TYPE_INT, 0);
+
 		$do = ( isset( $_REQUEST['do'] ) ) ? intval( $_REQUEST['do'] ) : '';
-		$file_id = ( isset( $_REQUEST['file_id'] ) ) ? intval( $_REQUEST['file_id'] ) : 0;
 		$mirrors = ( isset( $_POST['mirrors'] ) ) ? true : 0;
 
-		$dropmenu = ( !$cat_id ) ? $this->generate_jumpbox( 0, 0, '', true, true ) : $this-generate_jumpboxn( 0, 0, array( $cat_id => 1 ), true, true );
-
+		//
+		// Main Auth
+		//
 		if ( !empty( $cat_id ) )
 		{
-			if ( !$this->auth[$cat_id]['auth_upload'] )
+			if ( !$this->auth_user[$cat_id]['auth_upload'] )
 			{
-				if ( !$userdata['session_logged_in'] )
-				{
-					// mx_redirect(append_sid($mx_root_path . "login.$phpEx?redirect=".pa_this_mxurl("action=user_upload&cat_id=" . $cat_id), true));
-				}
-
-				$message = sprintf( $lang['Sorry_auth_upload'], $this->auth[$cat_id]['auth_upload_type'] );
-				mx_message_die( GENERAL_MESSAGE, $message );
+				$message = sprintf( $lang['Sorry_auth_upload'], $this->auth_user[$cat_id]['auth_upload_type'] );
 			}
 		}
 		else
 		{
+			$dropmenu = ( !$cat_id ) ? $this->generate_jumpbox( 0, 0, '', true, true, 'auth_upload' ) : $this->generate_jumpbox( 0, 0, array( $cat_id => 1 ), true, true, 'auth_upload' );
+
 			if ( empty( $dropmenu ) )
 			{
-				if ( !$userdata['session_logged_in'] )
-				{
-					// mx_redirect(append_sid($mx_root_path . "login.$phpEx?redirect=".pa_this_mxurl("action=user_upload"), true));
-				}
-
-				$message = sprintf( $lang['Sorry_auth_upload'], $this->auth[$cat_id]['auth_upload_type'] );
-				mx_message_die( GENERAL_MESSAGE, $message );
+				$message = sprintf( $lang['Sorry_auth_upload'], $this->auth_user[$cat_id]['auth_upload_type'] );
 			}
-		} 
-		// =======================================================
-		// MX Addon
-		// =======================================================
-		if ( $do == 'delete' )
+		}
+
+		//
+		// Not authorized? Output nice message and die.
+		//
+		if (!empty($message))
+		{
+			mx_message_die( GENERAL_MESSAGE, $message );
+		}
+
+		//
+		// Load file info...if file_id is set
+		//
+		if ( $file_id )
 		{
 			$sql = 'SELECT *
 				FROM ' . PA_FILES_TABLE . "
-				WHERE file_id = $file_id";
+				WHERE file_id = '".$file_id."'";
+
 			if ( !( $result = $db->sql_query( $sql ) ) )
 			{
-				mx_message_die( GENERAL_ERROR, 'Couldn\'t get file info', '', __LINE__, __FILE__, $sql );
+				mx_message_die( GENERAL_ERROR, 'Couldnt query File data', '', __LINE__, __FILE__, $sql );
 			}
-			$file_info = $db->sql_fetchrow( $result );
 
-			if ( ( $this->auth[$file_info['file_catid']]['auth_delete_file'] && $file_info['user_id'] == $userdata['user_id'] ) || $this->auth[$file_info['file_catid']]['auth_mod'] )
+			$file_data = $db->sql_fetchrow( $result );
+			$cat_id = $file_data['file_catid'];
+
+			$db->sql_freeresult( $result );
+		}
+
+		//
+		// Further security.
+		// Reset vars if no related data exist.
+		//
+		if ( $file_id && !$cat_id )
+		{
+			$file_id = 0;
+		}
+
+		if ( $cat_id && !$this->cat_rowset[$cat_id]['cat_id'] )
+		{
+			$cat_id = 0;
+		}
+
+		//
+		// Load custom fields
+		//
+		$custom_field = new custom_field();
+		$custom_field->init();
+
+		// =======================================================
+		// Delete
+		// =======================================================
+		if ( $do == 'delete' && $file_id )
+		{
+			if ( ( $this->auth_user[$cat_id]['auth_delete_file'] && $file_data['user_id'] == $userdata['user_id'] ) || $this->auth_user[$cat_id]['auth_mod'] )
 			{
-				$this->delete_files( $file_id );
+				//
+				// Notification
+				//
+				$this->update_add_item_notify($file_id, 'delete');
+
+				//
+				// Comments
+				//
+				if ($this->comments[$cat_id]['activated'] && $pafiledb_config['del_topic'])
+				{
+					if ( $this->comments[$cat_id]['internal_comments'] )
+					{
+						$sql = 'DELETE FROM ' . PA_COMMENTS_TABLE . "
+						WHERE file_id = '" . $file_id . "'";
+
+						if ( !( $db->sql_query( $sql ) ) )
+						{
+							mx_message_die( GENERAL_ERROR, 'Couldnt delete comments', '', __LINE__, __FILE__, $sql );
+						}
+					}
+					else
+					{
+						if ( $file_data['topic_id'] )
+						{
+							include( $module_root_path . 'pafiledb/includes/functions_comment.' . $phpEx );
+							$mx_pa_comments = new pafiledb_comments();
+							$mx_pa_comments->init( $file_data, 'phpbb');
+							$mx_pa_comments->post('delete_all', $file_data['topic_id']);
+						}
+					}
+				}
+
+				$this->delete_items( $file_id );
 				$this->_pafiledb();
-				$message = $lang['Filedeleted'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . append_sid( pa_this_mxurl( "" ) ) . '">', '</a>' );
+				$message = $lang['Filedeleted'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . mx_append_sid( $this->this_mxurl( "action=category&cat_id=" . $cat_id ) ) . '">', '</a>' );
 				mx_message_die( GENERAL_MESSAGE, $message );
 			}
 			else
 			{
-				$message = sprintf( $lang['Sorry_auth_delete'], $this->auth[$cat_id]['auth_upload_type'] );
+				$message = sprintf( $lang['Sorry_auth_delete'], $this->auth_user[$cat_id]['auth_delete_type'] );
 				mx_message_die( GENERAL_MESSAGE, $message );
 			}
-		} 
+		}
+
 		// =======================================================
 		// IF submit then upload the file and update the sql for it
 		// =======================================================
-		if ( isset( $_POST['submit'] ) )
+		if ( isset( $_POST['submit'] ) && $cat_id )
 		{
 			if ( !$file_id )
 			{
-				$temp_id = $this->update_add_file();
-				$custom_field->file_update_data( $temp_id );
-				
-				if ( $this->auth[$cat_id]['auth_approval'] || ( $this->auth[$cat_id]['auth_mod'] && $userdata['session_logged_in'] ))
+				if ( $this->auth_user[$cat_id]['auth_upload'] || $this->auth_user[$cat_id]['auth_mod'] )
 				{
-					$message = $lang['Fileadded'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . append_sid( pa_this_mxurl( "action=file&file_id=" . $temp_id ) ) . '">', '</a>' );
+					$pa_post_mode = 'add';
+
+					$file_id = $this->update_add_item();
+					$custom_field->file_update_data( $file_id );
+
+					if ( $this->auth_user[$cat_id]['auth_approval'] || $this->auth_user[$cat_id]['auth_mod'] )
+					{
+						$message = $lang['Fileadded'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $file_id ) ) . '">', '</a>' );
+					}
+					else
+					{
+						$message = $lang['Fileadded_not_validated'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . mx_append_sid( $this->this_mxurl( "action=category&cat_id=" . $cat_id ) ) . '">', '</a>' );
+					}
+
+					$this->_pafiledb();
 				}
 				else
 				{
-					$message = $lang['Fileadded_not_validated'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . append_sid( pa_this_mxurl( "action=category&cat_id=" . $cat_id ) ) . '">', '</a>' );
-				}
-
-				$this->_pafiledb();
-
-				$pa_pm = array();
-				
-				//
-				// Populate the pa_pm variable
-				//
-				$pa_pm = pa_get_pm_data( $temp_id );
-			
-				//
-				// Compose post header
-				//
-				$pa_message_tmp = pa_compose_pm( $pa_pm );
-				$pa_message = $pa_message_tmp['message'];
-				$pa_update_message = $pa_message_tmp['update_message'];
-								
-				//
-				// PM notify
-				//
-				$pa_admins = pa_get_admins( true );
-				
-				for ($i = 0; $i < count($pa_admins) || $i < 10; $i++)
-				{
-					 pa_notify( $pafiledb_config['notify'], $pa_message, $pa_admins[$i]['user_id'], $pa_pm['file_editor_id'], $info = 'new' );
+					$message = sprintf( $lang['Sorry_auth_upload'], $this->auth_user[$cat_id]['auth_upload_type'] );
 				}
 			}
-			elseif ( $file_id != '' )
+			else
 			{
-				$file_id = $this->update_add_file( $file_id );
-				$custom_field->file_update_data( $file_id );
-				$this->_pafiledb();
-
-				$pa_pm = array();
-				
-				//
-				// Populate the pa_pm variable
-				//
-				$pa_pm = pa_get_pm_data( $file_id );
-			
-				//
-				// Compose post header
-				//
-				$pa_message_tmp = pa_compose_pm( $pa_pm );
-				$pa_message = $pa_message_tmp['message'];
-				$pa_update_message = $pa_message_tmp['update_message'];	
-						
-				//
-				// PM notify
-				//
-				$pa_admins = pa_get_admins( true);
-				
-				for ($i = 0; $i < count($pa_admins) || $i < 10; $i++)
+				if ( ($this->auth_user[$cat_id]['auth_edit_file'] && $file_data['user_id'] == $userdata['user_id'] ) || $this->auth_user[$cat_id]['auth_mod'] )
 				{
-					pa_notify( $pafiledb_config['notify'], $pa_message, $pa_admins[$i]['user_id'], $pa_pm['file_editor_id'], $info = 'edited' );
+					$pa_post_mode = 'edit';
+
+					$file_id = $this->update_add_item( $file_id );
+					$custom_field->file_update_data( $file_id );
+
+					if ( $this->auth_user[$cat_id]['auth_approval_edit'] || $this->auth_user[$cat_id]['auth_mod'] )
+					{
+						$message = $lang['Fileedited'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . mx_append_sid( $this->this_mxurl( "action=file&file_id=" . $file_id ) ) . '">', '</a>' );
+					}
+					else
+					{
+						$message = $lang['Fileedited_not_validated'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . mx_append_sid( $this->this_mxurl( "action=category&cat_id=" . $cat_id ) ) . '">', '</a>' );
+
+					}
+
+					$this->_pafiledb();
 				}
-				
-				$message = $lang['Fileedited'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . append_sid( pa_this_mxurl( "action=file&file_id=" . $file_id ) ) . '">', '</a>' );
+				else
+				{
+					$message = sprintf( $lang['Sorry_auth_edit'], $this->auth_user[$cat_id]['auth_edit_type'] );
+				}
+			}
+
+			//
+			// Notification
+			//
+			$this->update_add_item_notify($file_id, $pa_post_mode);
+
+			//
+			// Auto comment
+			//
+			if ( $this->comments[$cat_id]['activated'] && $this->comments[$cat_id]['autogenerate_comments'] )
+			{
+				//
+				// Autogenerate comment (duplicate the notification message)
+				//
+				$mx_pa_notification = new mx_pa_notification();
+				$mx_pa_notification->init( $file_id, $pafiledb_config['allow_comment_wysiwyg'] );
+				$mx_pa_notification->_compose_auto_note($pa_post_mode == 'add' ? MX_NEW_NOTIFICATION : MX_EDITED_NOTIFICATION);
+
+				//
+				// Generate comment
+				//
+				$this->update_add_comment('', $file_id, 0, addslashes(trim($mx_pa_notification->topic_title)), addslashes(trim($mx_pa_notification->message)), true, false, false, true);
 			}
 
 			mx_message_die( GENERAL_MESSAGE, $message );
 		}
-		else 
-			// =======================================================
-			// IF not submit then load data form
-			// =======================================================
+		else
+		// =======================================================
+		// IF not submit then load data MAIN form
+		// =======================================================
+		{
+			if ( !$file_id )
 			{
-				if ( !$file_id )
+				$file_name = '';
+				$file_desc = '';
+				$file_long_desc = '';
+				$file_author = '';
+				$file_version = '';
+				$file_website = '';
+				$file_posticons = $pafiledb_functions->post_icons();
+				$file_cat_list = ( !$cat_id ) ? $this->generate_jumpbox( 0, 0, '', true ) : $this->generate_jumpbox( 0, 0, array( $cat_id => 1 ), true, true );
+				$file_license = $pafiledb_functions->license_list();
+				$pin_checked_yes = '';
+				$pin_checked_no = ' checked';
+				$disable_checked_yes = '';
+				$disable_checked_no = ' checked';
+				$disable_msg = 'The file is unavailable at the moment!';
+				$file_download = 0;
+				$approved_checked_yes = '';
+				$approved_checked_no = ' checked';
+				$file_ssurl = '';
+				$ss_checked_yes = '';
+				$ss_checked_no = ' checked';
+				$file_url = '';
+				$custom_exist = $custom_field->display_edit();
+				$mode = 'ADD';
+				$l_title = $lang['Afiletitle'];
+			}
+			else
+			{
+				//
+				// AUTH CHECK
+				//
+				if ( ( $this->auth_user[$cat_id]['auth_edit_file'] && $file_data['user_id'] == $userdata['user_id'] ) || $this->auth_user[$cat_id]['auth_mod'] )
 				{
-					$file_name = '';
-					$file_desc = '';
-					$file_long_desc = '';
-					$file_author = '';
-					$file_version = '';
-					$file_website = '';
-					$file_posticons = $pafiledb_functions->post_icons();
-					$file_cat_list = ( !$cat_id ) ? $this->generate_jumpbox( 0, 0, '', true ) : $this-generate_jumpbox( 0, 0, array( $cat_id => 1 ), true, true );
-					$file_license = $pafiledb_functions->license_list();
-					$pin_checked_yes = '';
-					$pin_checked_no = ' checked';
-					$file_download = 0;
-					$approved_checked_yes = '';
-					$approved_checked_no = ' checked';
-					$file_ssurl = '';
-					$ss_checked_yes = '';
-					$ss_checked_no = ' checked';
-					$file_url = '';
-					$custom_exist = $custom_field->display_edit();
-					$mode = 'ADD';
-					$l_title = $lang['Afiletitle'];
-				}
-				elseif ( $file_id != '' )
-				{
-					$sql = 'SELECT *
-						FROM ' . PA_FILES_TABLE . "
-						WHERE file_id = $file_id";
-					if ( !( $result = $db->sql_query( $sql ) ) )
-					{
-						mx_message_die( GENERAL_ERROR, 'Couldn\'t get file info', '', __LINE__, __FILE__, $sql );
-					}
-					$file_info = $db->sql_fetchrow( $result ); 
-					
-					// AUTH CHECK
-					if ( !( ( $this->auth[$file_info['file_catid']]['auth_edit_file'] && $file_info['user_id'] == $userdata['user_id'] ) || $this->auth[$file_info['file_catid']]['auth_mod'] ) )
-					{
-						$message = sprintf( $lang['Sorry_auth_edit'], $this->auth[$cat_id]['auth_upload_type'] );
-						mx_message_die( GENERAL_MESSAGE, $message );
-					}
-
-					$file_name = $file_info['file_name'];
-					$file_desc = $file_info['file_desc'];
-					$file_long_desc = $file_info['file_longdesc'];
-					$file_author = $file_info['file_creator'];
-					$file_version = $file_info['file_version'];
-					$file_website = $file_info['file_docsurl'];
-					$file_posticons = $pafiledb_functions->post_icons( $file_info['file_posticon'] );
-					$file_cat_list = $this->generate_jumpbox( 0, 0, array( $file_info['file_catid'] => 1 ), true );
-					$file_license = $pafiledb_functions->license_list( $file_info['file_license'] );
-					$pin_checked_yes = ( $file_info['file_pin'] ) ? ' checked' : '';
-					$pin_checked_no = ( !$file_info['file_pin'] ) ? ' checked' : '';
-					$file_download = intval( $file_info['file_dls'] );
-					$approved_checked_yes = ( $file_info['file_approved'] ) ? ' checked' : '';
-					$approved_checked_no = ( !$file_info['file_approved'] ) ? ' checked' : ''; 
-					$file_approved = ( $file_info['file_approved'] == '1' ) ? 1 : 0;
-					$file_ssurl = $file_info['file_ssurl'];
-					$ss_checked_yes = ( $file_info['file_sshot_link'] ) ? ' checked' : '';
-					$ss_checked_no = ( !$file_info['file_sshot_link'] ) ? ' checked' : '';
-					$file_url = $file_info['file_dlurl'];
-					$file_unique_name = $file_info['unique_name'];
-					$file_dir = $file_info['file_dir'];
+					$file_name = $file_data['file_name'];
+					$file_desc = $file_data['file_desc'];
+					$file_long_desc = $file_data['file_longdesc'];
+					$file_author = $file_data['file_creator'];
+					$file_version = $file_data['file_version'];
+					$file_website = $file_data['file_docsurl'];
+					$file_posticons = $pafiledb_functions->post_icons( $file_data['file_posticon'] );
+					$file_cat_list = $this->generate_jumpbox( 0, 0, array( $cat_id => 1 ), true );
+					$file_license = $pafiledb_functions->license_list( $file_data['file_license'] );
+					$pin_checked_yes = ( $file_data['file_pin'] ) ? ' checked' : '';
+					$pin_checked_no = ( !$file_data['file_pin'] ) ? ' checked' : '';
+					$disable_checked_yes = ( $file_data['file_disable'] ) ? ' checked' : '';
+					$disable_checked_no = ( !$file_data['file_disable'] ) ? ' checked' : '';
+					$disable_msg = $file_data['disable_msg'];
+					$file_download = intval( $file_data['file_dls'] );
+					$approved_checked_yes = ( $file_data['file_approved'] ) ? ' checked' : '';
+					$approved_checked_no = ( !$file_data['file_approved'] ) ? ' checked' : '';
+					$file_approved = ( $file_data['file_approved'] == '1' ) ? 1 : 0;
+					$file_ssurl = $file_data['file_ssurl'];
+					$ss_checked_yes = ( $file_data['file_sshot_link'] ) ? ' checked' : '';
+					$ss_checked_no = ( !$file_data['file_sshot_link'] ) ? ' checked' : '';
+					$file_url = $file_data['file_dlurl'];
+					$file_unique_name = $file_data['unique_name'];
+					$file_dir = $file_data['file_dir'];
 					$custom_exist = $custom_field->display_edit( $file_id );
 					$mode = 'EDIT';
 					$l_title = $lang['Efiletitle'];
+
 					$s_hidden_fields = '<input type="hidden" name="file_id" value="' . $file_id . '">';
 				}
-
-				$s_hidden_fields .= '<input type="hidden" name="action" value="user_upload">';
-
-				$pafiledb_template->assign_vars( array( 
-						'S_ADD_FILE_ACTION' => append_sid( pa_this_mxurl() ),
-
-						'DOWNLOAD' => $pafiledb_config['module_name'],
-						'FILESIZE' => intval( $pafiledb_config['max_file_size'] ),
-						'FILE_NAME' => $file_name,
-						'FILE_DESC' => $file_desc,
-						'FILE_LONG_DESC' => $file_long_desc,
-						'FILE_AUTHOR' => $file_author,
-						'FILE_VERSION' => $file_version,
-						'FILE_SSURL' => $file_ssurl,
-						'FILE_WEBSITE' => $file_website,
-						'FILE_DLURL' => $file_url,
-						'FILE_DOWNLOAD' => $file_download,
-						'CUSTOM_EXIST' => $custom_exist,
-						'AUTH_APPROVAL' => false,
-						'APPROVED_CHECKED_YES' => $approved_checked_yes,
-						'APPROVED_CHECKED_NO' => $approved_checked_no,
-						'SS_CHECKED_YES' => $ss_checked_yes,
-						'SS_CHECKED_NO' => $ss_checked_no,
-						'PIN_CHECKED_YES' => $pin_checked_yes,
-						'PIN_CHECKED_NO' => $pin_checked_no,
-
-						'L_INDEX' => "<<",
-						'L_UPLOAD' => $lang['User_upload'],
-						'L_FILE_TITLE' => $l_title,
-						'L_FILE_APPROVED' => $lang['Approved'],
-						'L_FILE_APPROVED_INFO' => $lang['Approved_info'],
-						'L_ADDTIONAL_FIELD' => $lang['Addtional_field'],
-						'L_SCREENSHOT' => $lang['Scrsht'],
-						'L_FILES' => $lang['Files'],
-						'L_FILE_NAME' => $lang['Filename'],
-						'L_FILE_NAME_INFO' => $lang['Filenameinfo'],
-						'L_FILE_SHORT_DESC' => $lang['Filesd'],
-						'L_FILE_SHORT_DESC_INFO' => $lang['Filesdinfo'],
-						'L_FILE_LONG_DESC' => $lang['Fileld'],
-						'L_FILE_LONG_DESC_INFO' => $lang['Fileldinfo'],
-						'L_FILE_AUTHOR' => $lang['Filecreator'],
-						'L_FILE_AUTHOR_INFO' => $lang['Filecreatorinfo'],
-						'L_FILE_VERSION' => $lang['Fileversion'],
-						'L_FILE_VERSION_INFO' => $lang['Fileversioninfo'],
-						'L_FILESS' => $lang['Filess'],
-						'L_FILESSINFO' => $lang['Filessinfo'],
-						'L_FILESS_UPLOAD' => $lang['Filess_upload'],
-						'L_FILESSINFO_UPLOAD' => $lang['Filessinfo_upload'],
-						'L_FILE_SSLINK' => $lang['Filess_link'],
-						'L_FILE_SSLINK_INFO' => $lang['Filess_link_info'],
-						'L_FILESSUPLOAD' => $lang['Filessupload'],
-						'L_FILE_WEBSITE' => $lang['Filedocs'],
-						'L_FILE_WEBSITE_INFO' => $lang['Filedocsinfo'],
-						'L_FILE_URL' => $lang['Fileurl'],
-						'L_FILE_UPLOAD' => $lang['File_upload'],
-						'L_FILEINFO_UPLOAD' => $lang['Fileinfo_upload'],
-						'L_FILE_URL_INFO' => $lang['Fileurlinfo'],
-						'L_FILE_POSTICONS' => $lang['Filepi'],
-						'L_FILE_POSTICONS_INFO' => $lang['Filepiinfo'],
-						'L_FILE_CAT' => $lang['Filecat'],
-						'L_FILE_CAT_INFO' => $lang['Filecatinfo'],
-						'L_FILE_LICENSE' => $lang['Filelicense'],
-						'L_NONE' => $lang['None'],
-						'L_FILE_LICENSE_INFO' => $lang['Filelicenseinfo'],
-						'L_FILE_PINNED' => $lang['Filepin'],
-						'L_FILE_PINNED_INFO' => $lang['Filepininfo'],
-						'L_FILE_DOWNLOAD' => $lang['Filedls'],
-						'L_NO' => $lang['No'],
-						'L_YES' => $lang['Yes'],
-
-						'S_POSTICONS' => $file_posticons,
-						'S_LICENSE_LIST' => $file_license,
-						'S_CAT_LIST' => $file_cat_list,
-						'S_HIDDEN_FIELDS' => $s_hidden_fields,
-
-						'MODE' => $mode,
-						'U_INDEX' => append_sid( $mx_root_path . 'index.' . $phpEx ),
-						'U_DOWNLOAD' => append_sid( pa_this_mxurl() ) ) 
-					);
-
-				$this->display( $lang['Download'], 'pa_file_add.tpl' );
+				else
+				{
+					$message = sprintf( $lang['Sorry_auth_edit'], $this->auth_user[$cat_id]['auth_edit_type'] );
+					mx_message_die( GENERAL_MESSAGE, $message );
+				}
 			}
+
+			$s_hidden_fields .= '<input type="hidden" name="action" value="user_upload">';
+
+			$template->assign_vars( array(
+				'S_ADD_FILE_ACTION' => mx_append_sid( $this->this_mxurl() ),
+
+				'DOWNLOAD' => $pafiledb_config['module_name'],
+				'FILESIZE' => intval( $pafiledb_config['max_file_size'] ),
+				'FILE_NAME' => $file_name,
+				'FILE_DESC' => $file_desc,
+				'FILE_LONG_DESC' => $file_long_desc,
+				'FILE_AUTHOR' => $file_author,
+				'FILE_VERSION' => $file_version,
+				'FILE_SSURL' => $file_ssurl,
+				'FILE_WEBSITE' => $file_website,
+				'FILE_DLURL' => $file_url,
+				'FILE_DOWNLOAD' => $file_download,
+				'CUSTOM_EXIST' => $custom_exist,
+				'AUTH_APPROVAL' => false,
+				'APPROVED_CHECKED_YES' => $approved_checked_yes,
+				'APPROVED_CHECKED_NO' => $approved_checked_no,
+				'SS_CHECKED_YES' => $ss_checked_yes,
+				'SS_CHECKED_NO' => $ss_checked_no,
+				'PIN_CHECKED_YES' => $pin_checked_yes,
+				'PIN_CHECKED_NO' => $pin_checked_no,
+				'DISABLE_CHECKED_YES' => $disable_checked_yes,
+				'DISABLE_CHECKED_NO' => $disable_checked_no,
+				'DISABLE_MSG' => $disable_msg,
+
+				'L_UPLOAD' => $lang['User_upload'],
+				'L_FILE_TITLE' => $l_title,
+				'L_FILE_APPROVED' => $lang['Approved'],
+				'L_FILE_APPROVED_INFO' => $lang['Approved_info'],
+				'L_ADDTIONAL_FIELD' => $lang['Addtional_field'],
+				'L_SCREENSHOT' => $lang['Scrsht'],
+				'L_FILES' => $lang['Files'],
+				'L_FILE_NAME' => $lang['Filename'],
+				'L_FILE_NAME_INFO' => $lang['Filenameinfo'],
+				'L_FILE_SHORT_DESC' => $lang['Filesd'],
+				'L_FILE_SHORT_DESC_INFO' => $lang['Filesdinfo'],
+				'L_FILE_LONG_DESC' => $lang['Fileld'],
+				'L_FILE_LONG_DESC_INFO' => $lang['Fileldinfo'],
+				'L_FILE_AUTHOR' => $lang['Filecreator'],
+				'L_FILE_AUTHOR_INFO' => $lang['Filecreatorinfo'],
+				'L_FILE_VERSION' => $lang['Fileversion'],
+				'L_FILE_VERSION_INFO' => $lang['Fileversioninfo'],
+				'L_FILESS' => $lang['Filess'],
+				'L_FILESSINFO' => $lang['Filessinfo'],
+				'L_FILESS_UPLOAD' => $lang['Filess_upload'],
+				'L_FILESSINFO_UPLOAD' => $lang['Filessinfo_upload'],
+				'L_FILE_SSLINK' => $lang['Filess_link'],
+				'L_FILE_SSLINK_INFO' => $lang['Filess_link_info'],
+				'L_FILESSUPLOAD' => $lang['Filessupload'],
+				'L_FILE_WEBSITE' => $lang['Filedocs'],
+				'L_FILE_WEBSITE_INFO' => $lang['Filedocsinfo'],
+				'L_FILE_URL' => $lang['Fileurl'],
+				'L_FILE_UPLOAD' => $lang['File_upload'],
+				'L_FILEINFO_UPLOAD' => $lang['Fileinfo_upload'],
+				'L_FILE_URL_INFO' => $lang['Fileurlinfo'],
+				'L_FILE_POSTICONS' => $lang['Filepi'],
+				'L_FILE_POSTICONS_INFO' => $lang['Filepiinfo'],
+				'L_FILE_CAT' => $lang['Filecat'],
+				'L_FILE_CAT_INFO' => $lang['Filecatinfo'],
+				'L_FILE_LICENSE' => $lang['Filelicense'],
+				'L_NONE' => $lang['None'],
+				'L_FILE_LICENSE_INFO' => $lang['Filelicenseinfo'],
+				'L_FILE_PINNED' => $lang['Filepin'],
+				'L_FILE_PINNED_INFO' => $lang['Filepininfo'],
+				'L_FILE_DISABLE' => $lang['Filedisable'],
+				'L_FILE_DISABLE_INFO' => $lang['Filedisableinfo'],
+				'L_FILE_DISABLE_MSG' => $lang['Filedisablemsg'],
+				'L_FILE_DISABLE_MSG_INFO' => $lang['Filedisablemsginfo'],
+				'L_FILE_DOWNLOAD' => $lang['Filedls'],
+				'L_NO' => $lang['No'],
+				'L_YES' => $lang['Yes'],
+
+				'S_POSTICONS' => $file_posticons,
+				'S_LICENSE_LIST' => $file_license,
+				'S_CAT_LIST' => $file_cat_list,
+				'S_HIDDEN_FIELDS' => $s_hidden_fields,
+				'MODE' => $mode,
+				'U_DOWNLOAD' => mx_append_sid( $this->this_mxurl() )
+			));
+
+			$this->display( $lang['Download'], 'pa_file_add.tpl' );
 		}
 	}
-
+}
 ?>

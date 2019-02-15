@@ -1,40 +1,33 @@
 <?php
-/** ------------------------------------------------------------------------
- *		Subject				: mxBB - a fully modular portal and CMS (for phpBB) 
- *		Author				: Jon Ohlsson and the mxBB Team
- *		Credits				: The phpBB Group & Marc Morisette, Mohd Basri & paFileDB 3.0 ©2001/2002 PHP Arena
- *		Copyright          	: (C) 2002-2005 mxBB Portal
- *		Email             	: jon@mxbb-portal.com
- *		Project site		: www.mxbb-portal.com
- * -------------------------------------------------------------------------
- * 
- *    $Id: pa_email.php,v 1.12 2005/12/08 15:15:13 jonohlsson Exp $
- */
-
 /**
- * This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- */
- 
-/*
-  paFileDB 3.0
-  ©2001/2002 PHP Arena
-  Written by Todd
-  todd@phparena.net
-  http://www.phparena.net
-  Keep all copyright links on the script visible
-  Please read the license included with this script for more information.
+*
+* @package MX-Publisher Module - mx_pafiledb
+* @version $Id: pa_email.php,v 1.22 2008/10/26 03:52:28 orynider Exp $
+* @copyright (c) 2002-2006 [Jon Ohlsson, Mohd Basri, wGEric, PHP Arena, pafileDB, CRLin] MX-Publisher Project Team
+* @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
+*
 */
 
+if ( !defined( 'IN_PORTAL' ) )
+{
+	die( "Hacking attempt" );
+}
+
+/**
+ * Enter description here...
+ *
+ */
 class pafiledb_email extends pafiledb_public
 {
-	function main( $action )
+	/**
+	 * Enter description here...
+	 *
+	 * @param unknown_type $action
+	 */
+	function main( $action  = false )
 	{
-		global $pafiledb_template, $lang, $board_config, $phpEx, $pafiledb_config, $db, $images, $userdata;
-		global $_REQUEST, $_POST, $phpbb_root_path; 
-		global $mx_root_path, $module_root_path, $is_block, $phpEx;
+		global $template, $lang, $board_config, $phpEx, $pafiledb_config, $db, $images, $userdata;
+		global $phpbb_root_path, $mx_root_path, $module_root_path, $is_block;
 
 		if ( isset( $_REQUEST['file_id'] ) )
 		{
@@ -46,7 +39,7 @@ class pafiledb_email extends pafiledb_public
 		}
 
 		$sql = 'SELECT file_catid, file_name
-			FROM ' . PA_FILES_TABLE . " 
+			FROM ' . PA_FILES_TABLE . "
 			WHERE file_id = $file_id";
 
 		if ( !( $result = $db->sql_query( $sql ) ) )
@@ -61,19 +54,19 @@ class pafiledb_email extends pafiledb_public
 
 		$db->sql_freeresult( $result );
 
-		if ( ( !$this->auth[$file_data['file_catid']]['auth_email'] ) )
+		if ( ( !$this->auth_user[$file_data['file_catid']]['auth_email'] ) )
 		{
 			if ( !$userdata['session_logged_in'] )
 			{
-				// mx_redirect(append_sid($mx_root_path . "login.$phpEx?redirect=".pa_this_mxurl("action=email&file_id=" . $file_id), true));
+				// mx_redirect(mx_append_sid($mx_root_path . "login.$phpEx?redirect=".$this->this_mxurl("action=email&file_id=" . $file_id), true));
 			}
 
-			$message = sprintf( $lang['Sorry_auth_email'], $this->auth[$file_data['file_catid']]['auth_email_type'] );
+			$message = sprintf( $lang['Sorry_auth_email'], $this->auth_user[$file_data['file_catid']]['auth_email_type'] );
 			mx_message_die( GENERAL_MESSAGE, $message );
 		}
 
 		if ( isset( $_POST['submit'] ) )
-		{ 
+		{
 			//
 			// session id check
 			//
@@ -164,19 +157,19 @@ class pafiledb_email extends pafiledb_public
 				$emailer->set_subject( $subject );
 				$emailer->extra_headers( $email_headers );
 
-				$emailer->assign_vars( array( 
+				$emailer->assign_vars( array(
 					'SITENAME' => $board_config['sitename'],
 					'BOARD_EMAIL' => $board_config['board_email'],
 					'FROM_USERNAME' => $sender_name,
 					'TO_USERNAME' => $username,
-					'MESSAGE' => $message ) 
+					'MESSAGE' => $message )
 				);
 
 				$emailer->send();
 
 				$emailer->reset();
 
-				$message = $lang['Econf'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . append_sid( pa_this_mxurl( 'action=file&id=' . $file_id ) ) . '">', '</a>' ) . '<br /><br />' . sprintf( $lang['Click_return_forum'], '<a href="' . append_sid( $mx_root_path . 'index.' . $phpEx ) . '">', '</a>' );
+				$message = $lang['Econf'] . '<br /><br />' . sprintf( $lang['Click_return'], '<a href="' . mx_append_sid( $this->this_mxurl( 'action=file&file_id=' . $file_id ) ) . '">', '</a>' ) . '<br /><br />' . sprintf( $lang['Click_return_forum'], '<a href="' . mx_append_sid( $mx_root_path . 'index.' . $phpEx ) . '">', '</a>' );
 				mx_message_die( GENERAL_MESSAGE, $message );
 			}
 
@@ -186,9 +179,9 @@ class pafiledb_email extends pafiledb_public
 			}
 		}
 
-		$pafiledb_template->assign_vars( array( 
+		$template->assign_vars( array(
 			'USER_LOGGED' => ( !$userdata['session_logged_in'] ) ? true : false,
-			'S_EMAIL_ACTION' => append_sid( pa_this_mxurl() ),
+			'S_EMAIL_ACTION' => mx_append_sid( $this->this_mxurl() ),
 			'S_HIDDEN_FIELDS' => '<input type="hidden" name="sid" value="' . $userdata['session_id'] . '" />',
 
 			'L_INDEX' => "<<",
@@ -206,18 +199,18 @@ class pafiledb_email extends pafiledb_public
 			'L_EMPTY_SUBJECT_EMAIL' => $lang['Empty_subject_email'],
 			'L_EMPTY_MESSAGE_EMAIL' => $lang['Empty_message_email'],
 
-			'U_INDEX' => append_sid( $mx_root_path . 'index.' . $phpEx ),
-			'U_DOWNLOAD_HOME' => append_sid( pa_this_mxurl() ),
-			'U_FILE_NAME' => append_sid( pa_this_mxurl( 'action=file&file_id=' . $file_id ) ),
+			'U_INDEX' => mx_append_sid( $mx_root_path . 'index.' . $phpEx ),
+			'U_DOWNLOAD_HOME' => mx_append_sid( $this->this_mxurl() ),
+			'U_FILE_NAME' => mx_append_sid( $this->this_mxurl( 'action=file&file_id=' . $file_id ) ),
 
 			'FILE_NAME' => $file_data['file_name'],
 			'SNAME' => $userdata['username'],
 			'SEMAIL' => $userdata['user_email'],
 			'DOWNLOAD' => $pafiledb_config['module_name'],
 			'FILE_URL' => get_formated_url() . '/dload.' . $phpEx . '?action=file&file_id=' . $file_id,
-			'ID' => $file_id ) 
+			'ID' => $file_id )
 		);
-		
+
 		// ===================================================
 		// assign var for navigation
 		// ===================================================
