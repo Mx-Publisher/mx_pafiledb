@@ -2,15 +2,15 @@
 /**
 *
 * @package MX-pafiledb Module - mx_pafiledb
-* @version $Id: functions.php,v 1.62 2012/01/09 06:58:15 orynider Exp $
-* @copyright (c) 2002-2006 [Mohd Basri, PHP Arena, pafileDB, Jon Ohlsson] MX-pafiledb Project Team
+* @version $Id: functions.php,v 1.63 2023/11/09 16:58:15 orynider Exp $
+* @copyright (c) 2002-2023 [Mohd Basri, PHP Arena, pafileDB, Jon Ohlsson] MX-pafiledb Project Team
 * @license http://opensource.org/licenses/gpl-license.php GNU General Public License v2
 *
 */
 
 if ( !defined( 'IN_PORTAL' ) )
 {
-	die( "Hacking attempt" );
+	die( "Hacking attempt in pafledb" );
 }
 
 /**
@@ -123,7 +123,7 @@ class pafiledb_functions
 	
 	protected $pa_license_table;	
 	
-	public function pafiledb_functions()
+	public function __construct()
 	{
 		global $mx_cache, $pafiledb_cache, $mx_request_vars, $template, $mx_user, $db, $phpbb_auth;  
 		global $board_config, $phpEx, $phpbb_root_path, $mx_root_path, $module_root_path;
@@ -132,7 +132,7 @@ class pafiledb_functions
 		$this->user 				= $mx_user;
 		$this->db 					= $db;
 		$this->helper 				= $mx_cache;
-		$this->request 			= $mx_request_vars;
+		$this->request 				= $mx_request_vars;
 		$this->auth 				= $phpbb_auth;
 		$this->container 			= $mx_cache;
 		$this->cache 				= $mx_cache;
@@ -144,10 +144,10 @@ class pafiledb_functions
 		$this->root_path 			= $mx_root_path;
 		$this->mx_root_path 		= $mx_root_path;
 		$this->module_root_path 	= $module_root_path;
-		$this->phpbb_root_path 	= $phpbb_root_path;
-		$this->pa_files_table 	= PA_FILES_TABLE;
-		$this->pa_cat_table 	= PA_CAT_TABLE;
-		$this->pa_config_table 	= PA_CONFIG_TABLE;
+		$this->phpbb_root_path 		= $phpbb_root_path;
+		$this->pa_files_table 		= PA_FILES_TABLE;
+		$this->pa_cat_table 		= PA_CAT_TABLE;
+		$this->pa_config_table 		= PA_CONFIG_TABLE;
 		$this->pa_votes_table 		= PA_VOTES_TABLE;
 		$this->pa_comments_table 	= PA_COMMENTS_TABLE;
 		$this->pa_license_table 	= PA_LICENSE_TABLE;
@@ -1190,11 +1190,38 @@ class pafiledb_functions
  */
 class mx_user_info
 {
-	var $agent = 'unknown';
+	/**#@+
+	* Constant identifying the super global with the same name.
+	*/
+	const POST = 0;
+	const GET = 1;
+	const REQUEST = 2;
+	const COOKIE = 3;
+	const SERVER = 4;
+	const FILES = 5;
+	/**#@-*/
+	
+	/** @var \orynider\pafiledb\core\ pafiledb */
+	protected $functions;	
+	/** @var \orynider\pafiledb\core\ pafiledb_functions */
+	protected $pafiledb_functions;
+	/** @var \orynider\pafiledb\core\pafiledb_cache */
+	protected $pafiledb_cache;		
+	/** @var \phpbb\user */
+	protected $user;
+	/** @var \phpbb\db\driver\driver_interface */
+	protected $db;	
+	/** @var \phpbb\config\config */
+	protected $config;
+	/** @var \phpbb\request\request */
+	protected $request;
+	
+	var $agent = 'Unknown';
+	var $user_agent = 'Unknown';
 	var $ver = 0;
 	var $majorver = 0;
 	var $minorver = 0;
-	var $platform = 'unknown';
+	var $platform = 'Unknown';	
 
 	/**
 	 * Constructor.
@@ -1203,21 +1230,20 @@ class mx_user_info
 	 *
 	 * @param unknown_type $user_agent allows override of user agent string for testing.
 	 */
-	function mx_user_info( $user_agent = '' )
+	function __construct($user_agent = '')
 	{
-		global $_SERVER, $HTTP_USER_AGENT, $HTTP_SERVER_VARS;
+		global $mx_request_vars, $_SERVER, $HTTP_USER_AGENT, $HTTP_SERVER_VARS;
 
-		if ( !empty( $_SERVER['HTTP_USER_AGENT'] ) )
+		$this->request = $mx_request_vars;
+		
+		/*   */	
+		if ($this->request->is_set('HTTP_USER_AGENT', 'agent'))
 		{
-			$HTTP_USER_AGENT = $_SERVER['HTTP_USER_AGENT'];
-		}
-		else if ( !empty( $HTTP_SERVER_VARS['HTTP_USER_AGENT'] ) )
-		{
-			$HTTP_USER_AGENT = $HTTP_SERVER_VARS['HTTP_USER_AGENT'];
+			$HTTP_USER_AGENT = $mx_request_vars->variable('HTTP_USER_AGENT', '', true, 'agent');
 		}
 		else if ( !isset( $HTTP_USER_AGENT ) )
 		{
-			$HTTP_USER_AGENT = '';
+			$HTTP_USER_AGENT = $mx_request_vars->server('HTTP_USER_AGENT', 'Mozilla/5.0 (Windows NT 11.0; Win64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5653.214 Safari/537.361');
 		}
 
 		if ( empty( $user_agent ) )
@@ -2419,7 +2445,7 @@ function send_file_to_browser($real_filename, $physical_filename, $upload_dir)
 	// borrowed from phpMyAdmin. :)
 	$user_agent = (!empty($_SERVER['HTTP_USER_AGENT'])) ? $_SERVER['HTTP_USER_AGENT'] : '';
 	$log_version = array();
-	//return preg_match(‘|#'.$pattern.'#', $string, $array);  
+	//return preg_match(â€˜|#'.$pattern.'#', $string, $array);  
 	if (preg_match('/Opera ([0-9].[0-9]{1,2})/', $user_agent, $log_version))
 	{
 		$browser_version = $log_version[2];
